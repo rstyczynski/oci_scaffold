@@ -269,3 +269,4 @@ _add_route() {
 # Set OCI_COMPARTMENT and OCI_REGION from tenancy/home when not provided.
 _oci_default_compartment
 _oci_default_region
+_info "STATE_FILE: $STATE_FILE"

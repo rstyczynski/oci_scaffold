@@ -27,8 +27,16 @@ cycle-compartment.sh    # Full cycle: IAM compartment path creation
 ## Quick start
 
 ```bash
-# OCI_COMPARTMENT is optional — defaults to tenancy OCID
 # OCI_REGION is optional — defaults to home region
+
+# OCI_COMPARTMENT is optional — defaults to tenancy OCID
+# here we will set active compartment to /oci_scaffold/test
+source do/oci_scaffold.sh
+_state_set '.inputs.compartment_path' /oci_scaffold/test
+resource/ensure-compartment.sh
+export OCI_COMPARTMENT=$(_state_get '.compartment.ocid')
+unset STATE_FILE
+
 
 # Network cycle (Service Gateway / OSN only)
 NAME_PREFIX=subnet ./cycle-subnet.sh
