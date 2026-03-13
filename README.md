@@ -2,6 +2,8 @@
 
 Modular, idempotent framework for provisioning and tearing down Oracle Cloud Infrastructure (OCI) resources — primarily for integration testing of OCI Functions and related services.
 
+> **Scope:** Each `ensure-*.sh` script manages exactly **one** resource of its type per state file. This is by design — the scaffold is a thin, readable CLI wrapper for quickly assembling resource sets needed by integration tests, not a general-purpose infrastructure manager.
+
 ## What it does
 
 Creates a complete OCI resource stack (network, vault, logging, functions app), runs connectivity checks, then tears it all down. Resources are tracked in a JSON state file so scripts are safe to re-run. All async OCI operations poll work requests for all terminal states (SUCCEEDED / FAILED / CANCELED) — failures surface immediately with a diagnostic message and are recorded in the state file for post-mortem inspection.
