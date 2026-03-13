@@ -125,17 +125,70 @@ Summary counters (`created`, `existing`, `tested`, `failed`) are reset at the st
 
 ## Key configuration
 
+### Generic environment (non-`.inputs`)
+
 | Variable | Default | Description |
 | --- | --- | --- |
-| `NAME_PREFIX` | **required** | Prefix for all created resource names |
-| `OCI_COMPARTMENT` | tenancy OCID | Target compartment; auto-discovered when omitted |
-| `OCI_REGION` | home region | Region identifier (e.g. `eu-zurich-1`); auto-discovered when omitted |
+| `NAME_PREFIX` | **required** | Prefix for all created resource names (also used in default state file name) |
+| `OCI_COMPARTMENT` | tenancy OCID | Target compartment; auto-discovered from tenancy when omitted |
+| `OCI_REGION` | home region | Region identifier (e.g. `eu-zurich-1`); auto-discovered from home region when omitted |
 | `STATE_FILE` | `./state-{NAME_PREFIX}.json` | JSON state file path; set before sourcing `do/oci_scaffold.sh` |
-| `COMPARTMENT_PATH` | — | Full path for `cycle-compartment.sh` (e.g. `/landing-zone/workloads/myapp`) |
-| `.inputs.vcn_cidr` | `10.0.0.0/16` | VCN CIDR block |
-| `.inputs.subnet_cidr` | `10.0.0.0/24` | Subnet CIDR block |
-| `.inputs.subnet_prohibit_public_ip` | `true` | Prohibit public IPs on VNICs |
-| `SECRET_VALUE` | — | Secret value for `cycle-vault.sh` |
+
+### Generic `.inputs.*` keys
+
+These are set by the cycle scripts and shared by many ensure scripts:
+
+| Key | Description |
+| --- | --- |
+| `.inputs.oci_compartment` | Compartment OCID all resources are created in |
+| `.inputs.oci_region` | Region identifier propagated into state |
+| `.inputs.name_prefix` | Name prefix used by all resources in this cycle |
+
+### Network-related `.inputs.*` keys
+
+| Key | Default | Description |
+| --- | --- | --- |
+| `.inputs.vcn_cidr` | `10.0.0.0/16` | VCN CIDR block (`ensure-vcn.sh`) |
+| `.inputs.subnet_cidr` | `10.0.0.0/24` | Subnet CIDR block (`ensure-subnet.sh`) |
+| `.inputs.subnet_prohibit_public_ip` | `true` | Prohibit public IPs on VNICs (`ensure-subnet.sh`) |
+| `.inputs.sl_egress_cidr` | `0.0.0.0/0` | Security list egress CIDR (`ensure-sl.sh`) |
+| `.inputs.sl_egress_protocol` | `all` | Security list egress protocol (`ensure-sl.sh`) |
+| `.inputs.natgw_block_traffic` | `false` | Whether NATGW should block all traffic (`ensure-natgw.sh`) |
+
+### Vault / key / secret `.inputs.*` keys
+
+| Key | Default | Description |
+| --- | --- | --- |
+| `.inputs.vault_type` | `DEFAULT` | Vault type (`ensure-vault.sh`) |
+| `.inputs.key_algorithm` | `AES` | KMS key algorithm (`ensure-key.sh`) |
+| `.inputs.key_length` | `32` | KMS key length in bytes (`ensure-key.sh`) |
+| `.inputs.secret_name` | `{NAME_PREFIX}-secret` | Secret display name (`ensure-secret.sh`) |
+| `.inputs.secret_value` | **required** | Plaintext secret value (`ensure-secret.sh`, set by `cycle-vault.sh`) |
+
+### Logging / bucket `.inputs.*` keys
+
+| Key | Default | Description |
+| --- | --- | --- |
+| `.inputs.bucket_name` | `{NAME_PREFIX}-bucket` | Object Storage bucket name (`ensure-bucket.sh`) |
+| `.inputs.oci_namespace` | discovered | Object Storage namespace (`ensure-bucket.sh`) |
+| `.inputs.log_group_name` | `{NAME_PREFIX}-logs` | Log Group name (`ensure-log-group.sh`) |
+| `.inputs.log_source_service` | `functions` or `objectstorage` | Service name for log source (`ensure-log.sh`, `cycle-log.sh`) |
+| `.inputs.log_source_resource` | — | Resource identifier to scope logs (e.g. bucket or Fn app) (`ensure-log.sh`, `cycle-log.sh`) |
+| `.inputs.log_source_category` | `invoke` or `write` | Log source category (`ensure-log.sh`, `cycle-log.sh`) |
+| `.inputs.log_name` | `{NAME_PREFIX}-invoke` | Log display name (`ensure-log.sh`) |
+
+### Fn Application `.inputs.*` keys
+
+| Key | Default | Description |
+| --- | --- | --- |
+| `.inputs.fn_app_name` | `{NAME_PREFIX}-fn-app` | Fn Application name (`ensure-fn-app.sh`) |
+| `.inputs.fn_shape` | `GENERIC_X86` / `GENERIC_ARM` | Fn Application shape (`ensure-fn-app.sh`) |
+
+### Compartment path `.inputs.*` keys
+
+| Key | Description |
+| --- | --- |
+| `.inputs.compartment_path` | Full IAM compartment path (e.g. `/landing-zone/workloads/myapp`) (`ensure-compartment.sh`, set by `cycle-compartment.sh`) |
 
 ## Compartment path resolution
 
