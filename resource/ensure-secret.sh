@@ -27,6 +27,22 @@ SECRET_VALUE=$(_state_get '.inputs.secret_value')
 
 _require_env OCI_COMPARTMENT NAME_PREFIX VAULT_OCID KEY_OCID SECRET_VALUE
 
+# If a previous teardown scheduled deletion, cancel it or start fresh.
+PREV_OCID=$(_state_get '.secret.ocid')
+DELETION_SCHEDULED=$(_state_get '.secret.deletion_scheduled')
+if [ "$DELETION_SCHEDULED" = "true" ] && [ -n "$PREV_OCID" ] && [ "$PREV_OCID" != "null" ]; then
+  if oci vault secret cancel-secret-deletion --secret-id "$PREV_OCID" >/dev/null 2>&1; then
+    _info "Secret: cancelled scheduled deletion — $PREV_OCID"
+    _state_set '.secret.deletion_scheduled' false
+  else
+    _info "Secret: already deleted — creating fresh"
+    _state_set '.secret.deletion_scheduled' false
+    _state_set '.secret.deleted' true
+    _state_set '.secret.ocid' ''
+    _state_set '.secret.created' false
+  fi
+fi
+
 secret_content=$(echo -n "$SECRET_VALUE" | base64)
 
 SECRET_OCID=$(oci vault secret list \

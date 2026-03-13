@@ -34,9 +34,6 @@ NAME_PREFIX=subnet ./cycle-subnet.sh
 # Network + NAT Gateway (internet access) cycle
 NAME_PREFIX=subnet_nat ./cycle-subnet-nat.sh
 
-# Vault + Key + Secret cycle
-NAME_PREFIX=secret SECRET_VALUE=myvalue ./cycle-vault.sh
-
 # Bucket + Log Group + Log (objectstorage/write) cycle
 NAME_PREFIX=logs ./cycle-log.sh
 
@@ -112,6 +109,80 @@ IAM compartment deletion is async and uses OCI work requests. `teardown-compartm
 - If a compartment ended in FAILED state (e.g. was non-empty), recovers it to ACTIVE then retries.
 - Compartments already deleted in prior runs are reported at the start of each teardown run for full path visibility.
 
+## Vault cycle and deferred deletion
+
+### Why vault teardown is different
+
+OCI KMS Vaults, Master Encryption Keys (MEKs), and Secrets **cannot be deleted immediately**. When you run `cycle-vault.sh` and teardown executes, OCI does *not* remove the resources — it schedules them for deletion after a mandatory retention window (7–30 days for Vault/Key, minimum 1 day for Secret). The resources enter `PENDING_DELETION` state and remain billable and visible in the console until the retention period expires.
+
+This means re-running `cycle-vault.sh` with the same `NAME_PREFIX` within that window will not create fresh resources — it will see the `PENDING_DELETION` state, cancel the scheduled deletion, and resume using the existing resources.
+
+### Running the vault cycle
+
+```bash
+# Shortest retention (7 days) — recommended for integration tests
+NAME_PREFIX=secret SECRET_VALUE=myvalue ./cycle-vault.sh
+
+# Override retention period (days must be in [7, 30])
+NAME_PREFIX=secret SECRET_VALUE=myvalue \
+  VAULT_DELETION_DAYS=14 KEY_DELETION_DAYS=14 ./cycle-vault.sh
+```
+
+`OCI_COMPARTMENT` is optional; omit it to use the tenancy OCID.
+
+After the script completes the vault and key are in `PENDING_DELETION`. They will be permanently removed by OCI after the configured number of days — no further action is required.
+
+### Deferred deletion state tracking
+
+The scaffold tracks this two-phase lifecycle with state flags per resource:
+
+| Flag | Meaning |
+| --- | --- |
+| `.deletion_scheduled` | Teardown has requested deletion; OCI resource is in `PENDING_DELETION` |
+| `.deleted` | OCI has actually removed the resource (confirmed by API or 404) |
+
+### Lifecycle transitions
+
+```text
+ensure  ──→  .created: true
+                 │
+teardown ──→  .deletion_scheduled: true   (OCI: PENDING_DELETION)
+                 │
+                 ├── re-run teardown (within retention)
+                 │     → queries OCI, sees PENDING_DELETION
+                 │     → "deletion already scheduled (PENDING_DELETION)"
+                 │
+                 ├── re-run teardown (after retention)
+                 │     → queries OCI, gets DELETED / 404
+                 │     → sets .deleted: true, clears .deletion_scheduled
+                 │
+                 ├── re-run ensure (within retention)
+                 │     → cancels deletion via OCI API
+                 │     → clears .deletion_scheduled, proceeds normally
+                 │
+                 └── re-run ensure (after retention, resource gone)
+                       → cancel fails (404)
+                       → sets .deleted: true, clears OCID
+                       → creates a fresh resource
+```
+
+### Configuration
+
+Retention period is controlled via state (set by `cycle-vault.sh` from environment):
+
+| Key | Default | Range | Description |
+| --- | --- | --- | --- |
+| `.inputs.vault_deletion_days` | `7` | 7–30 | Days until vault is permanently deleted |
+| `.inputs.key_deletion_days` | `7` | 7–30 | Days until key is permanently deleted |
+
+```bash
+# Schedule deletion with shortest retention (7 days)
+NAME_PREFIX=secret SECRET_VALUE=myvalue ./cycle-vault.sh
+
+# Override retention period
+NAME_PREFIX=secret SECRET_VALUE=myvalue VAULT_DELETION_DAYS=14 KEY_DELETION_DAYS=14 ./cycle-vault.sh
+```
+
 ## State file
 
 All resource OCIDs and flags are stored in `STATE_FILE` (default: `./state-{NAME_PREFIX}.json` in the current directory). The `meta.creation_order` array drives teardown sequencing. Only resources with `created: true` are deleted on teardown.
@@ -162,8 +233,11 @@ These are set by the cycle scripts and shared by many ensure scripts:
 | `.inputs.vault_type` | `DEFAULT` | Vault type (`ensure-vault.sh`) |
 | `.inputs.key_algorithm` | `AES` | KMS key algorithm (`ensure-key.sh`) |
 | `.inputs.key_length` | `32` | KMS key length in bytes (`ensure-key.sh`) |
+| `.inputs.key_protection_mode` | `SOFTWARE` | Key protection: `SOFTWARE` \| `HSM` \| `EXTERNAL` (`ensure-key.sh`) |
 | `.inputs.secret_name` | `{NAME_PREFIX}-secret` | Secret display name (`ensure-secret.sh`) |
 | `.inputs.secret_value` | **required** | Plaintext secret value (`ensure-secret.sh`, set by `cycle-vault.sh`) |
+| `.inputs.vault_deletion_days` | `7` | Days until vault deletion (clamped to [7,30]) (`teardown-vault.sh`) |
+| `.inputs.key_deletion_days` | `7` | Days until key deletion (clamped to [7,30]) (`teardown-key.sh`) |
 
 ### Logging / bucket `.inputs.*` keys
 

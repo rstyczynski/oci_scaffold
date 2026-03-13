@@ -21,6 +21,22 @@ VAULT_TYPE="${VAULT_TYPE:-DEFAULT}"
 
 _require_env OCI_COMPARTMENT NAME_PREFIX
 
+# If a previous teardown scheduled deletion, cancel it or start fresh.
+PREV_OCID=$(_state_get '.vault.ocid')
+DELETION_SCHEDULED=$(_state_get '.vault.deletion_scheduled')
+if [ "$DELETION_SCHEDULED" = "true" ] && [ -n "$PREV_OCID" ] && [ "$PREV_OCID" != "null" ]; then
+  if oci kms management vault cancel-deletion --vault-id "$PREV_OCID" >/dev/null 2>&1; then
+    _info "Vault: cancelled scheduled deletion — $PREV_OCID"
+    _state_set '.vault.deletion_scheduled' false
+  else
+    _info "Vault: already deleted — creating fresh"
+    _state_set '.vault.deletion_scheduled' false
+    _state_set '.vault.deleted' true
+    _state_set '.vault.ocid' ''
+    _state_set '.vault.created' false
+  fi
+fi
+
 vault_name="${NAME_PREFIX}-vault"
 
 VAULT_OCID=$(oci kms management vault list \

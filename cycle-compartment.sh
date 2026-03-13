@@ -33,4 +33,4 @@ _info "Compartment ready: $COMPARTMENT_PATH_OUT → $COMPARTMENT_OCID"
 print_summary
 
 # ── teardown ───────────────────────────────────────────────────────────────
-do/teardown.sh "$NAME_PREFIX"
+NAME_PREFIX=$NAME_PREFIX do/teardown.sh

@@ -100,6 +100,12 @@ for _entry in "${_to_delete[@]}"; do
   done
 
   if [ "$WR_STATUS" != "SUCCEEDED" ]; then
+    WR_ERR=$(oci iam work-request get --work-request-id "$_wr_ocid" 2>/dev/null | \
+      jq -r '.data.errors[]? | "\(.code): \(.message)"' 2>/dev/null | head -5)
+    if [ -n "$WR_ERR" ]; then
+      echo "  [FAIL] OCI work request errors:"
+      echo "$WR_ERR" | sed 's/^/    /'
+    fi
     _fail "Compartment '$_path' deletion work request ended with status: $WR_STATUS"
     exit 1
   fi
