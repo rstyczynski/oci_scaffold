@@ -1,35 +1,46 @@
 #!/usr/bin/env bash
-# test-vault.sh — setup + teardown of Vault, KMS Key, and Secret
+# cycle-subnet-nat.sh — setup + connectivity checks + teardown (with NAT gateway)
 #
 # Usage:
-#   NAME_PREFIX=test1 SECRET_VALUE=myvalue ./test-vault.sh
-#   OCI_COMPARTMENT=ocid1.compartment... NAME_PREFIX=test1 SECRET_VALUE=myvalue ./test-vault.sh
-#
-# OCI_COMPARTMENT is optional; defaults to the tenancy OCID when omitted.
+#   NAME_PREFIX=test1 ./cycle-subnet-nat.sh
+#   OCI_REGION=eu-zurich-1 NAME_PREFIX=test1 ./cycle-subnet-nat.sh  # optional: override default (home region)
+#   OCI_COMPARTMENT=... OCI_REGION=... NAME_PREFIX=test1 ./cycle-subnet-nat.sh
 set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
 export PATH="$DIR/do:$DIR/resource:$PATH"
 
 : "${NAME_PREFIX:?NAME_PREFIX must be set}"
-: "${SECRET_VALUE:?SECRET_VALUE must be set}"
 source "$DIR/do/oci_scaffold.sh"
 _summary_reset
 
 # ── seed inputs ────────────────────────────────────────────────────────────
 _state_set '.inputs.oci_compartment' "$OCI_COMPARTMENT"
+_state_set '.inputs.oci_region'      "$OCI_REGION"
 _state_set '.inputs.name_prefix'     "$NAME_PREFIX"
-_state_set '.inputs.secret_value'    "$SECRET_VALUE"
 
 # ── setup ──────────────────────────────────────────────────────────────────
-ensure-vault.sh
-ensure-key.sh
-ensure-secret.sh
+ensure-vcn.sh
+ensure-sl.sh
+ensure-sgw.sh
+ensure-natgw.sh
+ensure-rt.sh
+ensure-subnet.sh
+
+# ── connectivity checks ────────────────────────────────────────────────────
+# OSN via SGW — objectstorage.{region}.oraclecloud.com tcp/443
+ensure-path-analyzer.sh
+
+# Internet via NAT GW
+PATH_DST_HOSTNAME=oracle.com PATH_PROTOCOL=tcp PATH_DST_PORT=443 \
+  ensure-path-analyzer.sh
 
 # ── your test assertions go here ───────────────────────────────────────────
-SECRET_OCID=$(_state_get '.secret.ocid')
-_info "Secret ready: $SECRET_OCID"
+SUBNET_OCID=$(_state_get '.subnet.ocid')
+_info "Subnet ready: $SUBNET_OCID"
 
 print_summary
 
 # ── teardown ───────────────────────────────────────────────────────────────
 do/teardown.sh "$NAME_PREFIX"
+
+

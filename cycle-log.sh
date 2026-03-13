@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# test-subnet-nat.sh — setup + connectivity checks + teardown (with NAT gateway)
+# cycle-log.sh — setup + teardown of Bucket, Log Group, and Log
 #
 # Usage:
-#   NAME_PREFIX=test1 ./test-subnet-nat.sh
-#   OCI_REGION=eu-zurich-1 NAME_PREFIX=test1 ./test-subnet-nat.sh  # optional: override default (home region)
-#   OCI_COMPARTMENT=... OCI_REGION=... NAME_PREFIX=test1 ./test-subnet-nat.sh
+#   NAME_PREFIX=logs ./cycle-log.sh
+#   OCI_COMPARTMENT=... OCI_REGION=... NAME_PREFIX=logs ./cycle-log.sh
+#
+# A bucket is created automatically and used as the log source (objectstorage / write).
+# OCI_COMPARTMENT and OCI_REGION are optional; they default to tenancy and home region.
 set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
 export PATH="$DIR/do:$DIR/resource:$PATH"
@@ -14,33 +16,29 @@ source "$DIR/do/oci_scaffold.sh"
 _summary_reset
 
 # ── seed inputs ────────────────────────────────────────────────────────────
-_state_set '.inputs.oci_compartment' "$OCI_COMPARTMENT"
-_state_set '.inputs.oci_region'      "$OCI_REGION"
-_state_set '.inputs.name_prefix'     "$NAME_PREFIX"
+_state_set '.inputs.oci_compartment'       "$OCI_COMPARTMENT"
+_state_set '.inputs.name_prefix'           "$NAME_PREFIX"
+_state_set '.inputs.log_source_service'    "objectstorage"
+_state_set '.inputs.log_source_category'   "write"
 
 # ── setup ──────────────────────────────────────────────────────────────────
-ensure-vcn.sh
-ensure-sl.sh
-ensure-sgw.sh
-ensure-natgw.sh
-ensure-rt.sh
-ensure-subnet.sh
+ensure-bucket.sh
 
-# ── connectivity checks ────────────────────────────────────────────────────
-# OSN via SGW — objectstorage.{region}.oraclecloud.com tcp/443
-ensure-path-analyzer.sh
+# wire bucket name as log source (objectstorage service logs require bucket name as resource)
+_state_set '.inputs.log_source_resource' "$(_state_get '.bucket.name')"
 
-# Internet via NAT GW
-PATH_DST_HOSTNAME=oracle.com PATH_PROTOCOL=tcp PATH_DST_PORT=443 \
-  ensure-path-analyzer.sh
+ensure-log-group.sh
+ensure-log.sh
 
 # ── your test assertions go here ───────────────────────────────────────────
-SUBNET_OCID=$(_state_get '.subnet.ocid')
-_info "Subnet ready: $SUBNET_OCID"
+BUCKET_NAME=$(_state_get '.bucket.name')
+LOG_GROUP_OCID=$(_state_get '.log_group.ocid')
+LOG_OCID=$(_state_get '.log.ocid')
+_info "Bucket ready: $BUCKET_NAME"
+_info "Log Group ready: $LOG_GROUP_OCID"
+_info "Log ready: $LOG_OCID"
 
 print_summary
 
 # ── teardown ───────────────────────────────────────────────────────────────
 do/teardown.sh "$NAME_PREFIX"
-
-

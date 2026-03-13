@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# test-subnet.sh — setup + connectivity checks + teardown (no NAT gateway)
+# cycle-subnet.sh — setup + connectivity checks + teardown (no NAT gateway)
 #
 # Usage:
-#   NAME_PREFIX=test1 ./test-subnet.sh
-#   OCI_REGION=eu-zurich-1 NAME_PREFIX=test1 ./test-subnet.sh  # optional: override default (home region)
-#   OCI_COMPARTMENT=... OCI_REGION=... NAME_PREFIX=test1 ./test-subnet.sh
+#   NAME_PREFIX=test1 ./cycle-subnet.sh
+#   OCI_REGION=eu-zurich-1 NAME_PREFIX=test1 ./cycle-subnet.sh  # optional: override default (home region)
+#   OCI_COMPARTMENT=... OCI_REGION=... NAME_PREFIX=test1 ./cycle-subnet.sh
 set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
 export PATH="$DIR/do:$DIR/resource:$PATH"

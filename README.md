@@ -15,11 +15,11 @@ do/
 resource/
   ensure-*.sh          # Idempotent resource creation (network, vault, key, secret, logs, fn app, bucket, compartment, path analyzer)
   teardown-*.sh        # Resource deletion scripts
-test-subnet.sh         # Full test: VCN + SGW (no internet)
-test-subnet-nat.sh     # Full test: VCN + SGW + NAT (with internet)
-test-vault.sh          # Full test: Vault + Key + Secret
-test-log.sh            # Full test: Bucket + Log Group + Log
-test-compartment.sh    # Full test: IAM compartment path creation
+cycle-subnet.sh         # Full cycle: VCN + SGW (no internet)
+cycle-subnet-nat.sh     # Full cycle: VCN + SGW + NAT (with internet)
+cycle-vault.sh          # Full cycle: Vault + Key + Secret
+cycle-log.sh            # Full cycle: Bucket + Log Group + Log
+cycle-compartment.sh    # Full cycle: IAM compartment path creation
 ```
 
 ## Quick start
@@ -28,34 +28,34 @@ test-compartment.sh    # Full test: IAM compartment path creation
 # OCI_COMPARTMENT is optional — defaults to tenancy OCID
 # OCI_REGION is optional — defaults to home region
 
-# Test network (Service Gateway / OSN only)
-NAME_PREFIX=subnet ./test-subnet.sh
+# Network cycle (Service Gateway / OSN only)
+NAME_PREFIX=subnet ./cycle-subnet.sh
 
-# Test network with NAT Gateway (internet access)
-NAME_PREFIX=subnet_nat ./test-subnet-nat.sh
+# Network + NAT Gateway (internet access) cycle
+NAME_PREFIX=subnet_nat ./cycle-subnet-nat.sh
 
-# Test Vault + Key + Secret
-NAME_PREFIX=secret SECRET_VALUE=myvalue ./test-vault.sh
+# Vault + Key + Secret cycle
+NAME_PREFIX=secret SECRET_VALUE=myvalue ./cycle-vault.sh
 
-# Test Bucket + Log Group + Log (objectstorage/write)
-NAME_PREFIX=logs ./test-log.sh
+# Bucket + Log Group + Log (objectstorage/write) cycle
+NAME_PREFIX=logs ./cycle-log.sh
 
-# Test IAM compartment path (creates all segments, tears them down)
-NAME_PREFIX=test1 COMPARTMENT_PATH=/landing-zone/workloads/myapp ./test-compartment.sh
+# IAM compartment path cycle (creates all segments, tears them down)
+NAME_PREFIX=cmp COMPARTMENT_PATH=/landing-zone/workloads/myapp ./cycle-compartment.sh
 ```
 
-## Resource coverage
+## Resource / cycle coverage
 
-| Resource | ensure/teardown | Test script |
+| Resource | ensure/teardown | Cycle script |
 | --- | --- | --- |
-| VCN, Security List, SGW, Route Table, Subnet | yes | `test-subnet.sh` |
-| NAT Gateway | yes | `test-subnet-nat.sh` |
-| Path Analyzer | yes | `test-subnet.sh`, `test-subnet-nat.sh` |
-| Vault, KMS Key, Secret | yes | `test-vault.sh` |
-| Object Storage Bucket | yes | `test-log.sh` |
-| Log Group, Log | yes | `test-log.sh` |
-| IAM Compartment path | yes | `test-compartment.sh` |
-| Functions Application | yes | *(no dedicated script — combine with subnet test)* |
+| VCN, Security List, SGW, Route Table, Subnet | yes | `cycle-subnet.sh` |
+| NAT Gateway | yes | `cycle-subnet-nat.sh` |
+| Path Analyzer | yes | `cycle-subnet.sh`, `cycle-subnet-nat.sh` |
+| Vault, KMS Key, Secret | yes | `cycle-vault.sh` |
+| Object Storage Bucket | yes | `cycle-log.sh` |
+| Log Group, Log | yes | `cycle-log.sh` |
+| IAM Compartment path | yes | `cycle-compartment.sh` |
+| Functions Application | yes | *(no dedicated cycle — combine with subnet test)* |
 
 ## Failure handling
 
@@ -118,7 +118,7 @@ All resource OCIDs and flags are stored in `STATE_FILE` (default: `./state-{NAME
 
 ```bash
 # Override location
-STATE_FILE=/tmp/state-run1.json NAME_PREFIX=run1 ./test-subnet.sh
+STATE_FILE=/tmp/state-run1.json NAME_PREFIX=run1 ./cycle-subnet.sh
 ```
 
 Summary counters (`created`, `existing`, `tested`, `failed`) are reset at the start of each test run and updated in real-time as each resource operation completes.
@@ -131,11 +131,11 @@ Summary counters (`created`, `existing`, `tested`, `failed`) are reset at the st
 | `OCI_COMPARTMENT` | tenancy OCID | Target compartment; auto-discovered when omitted |
 | `OCI_REGION` | home region | Region identifier (e.g. `eu-zurich-1`); auto-discovered when omitted |
 | `STATE_FILE` | `./state-{NAME_PREFIX}.json` | JSON state file path; set before sourcing `do/oci_scaffold.sh` |
-| `COMPARTMENT_PATH` | — | Full path for `test-compartment.sh` (e.g. `/landing-zone/workloads/myapp`) |
+| `COMPARTMENT_PATH` | — | Full path for `cycle-compartment.sh` (e.g. `/landing-zone/workloads/myapp`) |
 | `.inputs.vcn_cidr` | `10.0.0.0/16` | VCN CIDR block |
 | `.inputs.subnet_cidr` | `10.0.0.0/24` | Subnet CIDR block |
 | `.inputs.subnet_prohibit_public_ip` | `true` | Prohibit public IPs on VNICs |
-| `SECRET_VALUE` | — | Secret value for `test-vault.sh` |
+| `SECRET_VALUE` | — | Secret value for `cycle-vault.sh` |
 
 ## Compartment path resolution
 
