@@ -30,8 +30,10 @@ ensure-subnet.sh
 ensure-path-analyzer.sh
 
 # Internet via NAT GW
-PATH_DST_HOSTNAME=oracle.com PATH_PROTOCOL=tcp PATH_DST_PORT=443 \
-  ensure-path-analyzer.sh
+_state_set '.path_analyzer.inputs.protocol' tcp
+_state_set '.path_analyzer.inputs.hostname' oracle.com
+_state_set '.path_analyzer.inputs.port' 443
+ensure-path-analyzer.sh
 
 # ── your test assertions go here ───────────────────────────────────────────
 SUBNET_OCID=$(_state_get '.subnet.ocid')

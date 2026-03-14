@@ -5,17 +5,15 @@
 # No teardown entry needed.
 #
 # Reads from state.json:
-#   .inputs.oci_compartment   (required)
-#   .subnet.ocid              (required)
-#   .subnet.cidr              (required — first usable IP used as source address)
-#
-# Parameters (env vars, not stored in state — pass per invocation):
-#   PATH_DST_HOSTNAME destination hostname (default: objectstorage.{region}.oraclecloud.com — OSN via SGW)
-#   PATH_DST_IP       destination IP       (overrides PATH_DST_HOSTNAME when set)
-#   PATH_PROTOCOL     icmp | tcp | udp     (default: tcp)
-#   PATH_DST_PORT     destination port     (default: 443; ignored for icmp)
-#   PATH_LABEL        display label        (default: auto)
-#   PATH_TIMEOUT      poll timeout seconds (default: 180)
+#   .inputs.oci_compartment              (required)
+#   .subnet.ocid                         (required)
+#   .subnet.cidr                         (required — first usable IP used as source address)
+#   .path_analyzer.inputs.hostname       destination hostname (default: objectstorage.{region}.oraclecloud.com)
+#   .path_analyzer.inputs.dst_ip         destination IP — overrides hostname when set (optional)
+#   .path_analyzer.inputs.protocol       icmp | tcp | udp (default: tcp)
+#   .path_analyzer.inputs.port           destination port (default: 443; ignored for icmp)
+#   .path_analyzer.inputs.label          display label (default: auto)
+#   .path_analyzer.inputs.timeout        poll timeout seconds (default: 180)
 #
 # Appends to state.json:
 #   .path_analyzer[]  { label, dst_ip, protocol, dst_port, result }
@@ -34,10 +32,18 @@ _require_env OCI_COMPARTMENT SUBNET_OCID SUBNET_CIDR OCI_REGION
 IFS='.' read -r _o1 _o2 _o3 _o4 <<< "${SUBNET_CIDR%/*}"
 SUBNET_SRC_IP="${_o1}.${_o2}.${_o3}.$((_o4+1))"
 
-PATH_DST_HOSTNAME="${PATH_DST_HOSTNAME:-objectstorage.${OCI_REGION}.oraclecloud.com}"
-PATH_PROTOCOL="${PATH_PROTOCOL:-tcp}"
-PATH_DST_PORT="${PATH_DST_PORT:-443}"
-PATH_TIMEOUT="${PATH_TIMEOUT:-180}"
+_pa_hostname=$(_state_get '.path_analyzer.inputs.hostname')
+PATH_DST_HOSTNAME="${_pa_hostname:-objectstorage.${OCI_REGION}.oraclecloud.com}"
+_pa_protocol=$(_state_get '.path_analyzer.inputs.protocol')
+PATH_PROTOCOL="${_pa_protocol:-tcp}"
+_pa_port=$(_state_get '.path_analyzer.inputs.port')
+PATH_DST_PORT="${_pa_port:-443}"
+_pa_timeout=$(_state_get '.path_analyzer.inputs.timeout')
+PATH_TIMEOUT="${_pa_timeout:-180}"
+_pa_dst_ip=$(_state_get '.path_analyzer.inputs.dst_ip')
+PATH_DST_IP="${_pa_dst_ip:-}"
+_pa_label=$(_state_get '.path_analyzer.inputs.label')
+PATH_LABEL="${_pa_label:-}"
 
 # Resolve IP: use explicit PATH_DST_IP if given, otherwise resolve hostname
 if [ -z "${PATH_DST_IP:-}" ]; then
