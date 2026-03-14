@@ -104,6 +104,19 @@ jq . state-logs.json
 
 Then clean up manually using the individual teardown scripts or re-run the test (idempotent — existing resources are detected and reused).
 
+### Cleaning up after a failed run
+
+When a cycle fails mid-way, teardown is skipped and the state file is left in place. Resources that were detected as pre-existing have `created: false` and are normally skipped by teardown. Use `FORCE_DELETE=true` to delete everything in state regardless of the `created` flag:
+
+```bash
+# State file still present
+FORCE_DELETE=true NAME_PREFIX=subnet_nat do/teardown.sh
+
+# State file already archived (teardown ran but resources remain)
+STATE_FILE=state-subnet_nat.deleted-20260313T220309.json \
+  FORCE_DELETE=true do/teardown.sh
+```
+
 ## Compartment teardown
 
 IAM compartment deletion is async and uses OCI work requests. `teardown-compartment.sh`:

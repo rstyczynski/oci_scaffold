@@ -30,9 +30,9 @@ ensure-subnet.sh
 ensure-path_analyzer.sh
 
 # Internet via NAT GW
-_state_set '.path_analyzer.inputs.protocol' tcp
-_state_set '.path_analyzer.inputs.hostname' oracle.com
-_state_set '.path_analyzer.inputs.port' 443
+_state_set '.inputs.path_analyzer_protocol' tcp
+_state_set '.inputs.path_analyzer_hostname' oracle.com
+_state_set '.inputs.path_analyzer_port' 443
 ensure-path_analyzer.sh
 
 # ── your test assertions go here ───────────────────────────────────────────

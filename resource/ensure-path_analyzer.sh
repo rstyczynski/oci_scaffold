@@ -8,12 +8,12 @@
 #   .inputs.oci_compartment              (required)
 #   .subnet.ocid                         (required)
 #   .subnet.cidr                         (required — first usable IP used as source address)
-#   .path_analyzer.inputs.hostname       destination hostname (default: objectstorage.{region}.oraclecloud.com)
-#   .path_analyzer.inputs.dst_ip         destination IP — overrides hostname when set (optional)
-#   .path_analyzer.inputs.protocol       icmp | tcp | udp (default: tcp)
-#   .path_analyzer.inputs.port           destination port (default: 443; ignored for icmp)
-#   .path_analyzer.inputs.label          display label (default: auto)
-#   .path_analyzer.inputs.timeout        poll timeout seconds (default: 180)
+#   .inputs.path_analyzer_hostname       destination hostname (default: objectstorage.{region}.oraclecloud.com)
+#   .inputs.path_analyzer_dst_ip         destination IP — overrides hostname when set (optional)
+#   .inputs.path_analyzer_protocol       icmp | tcp | udp (default: tcp)
+#   .inputs.path_analyzer_port           destination port (default: 443; ignored for icmp)
+#   .inputs.path_analyzer_label          display label (default: auto)
+#   .inputs.path_analyzer_timeout        poll timeout seconds (default: 180)
 #
 # Appends to state.json:
 #   .path_analyzer[]  { label, dst_ip, protocol, dst_port, result }
@@ -32,17 +32,17 @@ _require_env OCI_COMPARTMENT SUBNET_OCID SUBNET_CIDR OCI_REGION
 IFS='.' read -r _o1 _o2 _o3 _o4 <<< "${SUBNET_CIDR%/*}"
 SUBNET_SRC_IP="${_o1}.${_o2}.${_o3}.$((_o4+1))"
 
-_pa_hostname=$(_state_get '.path_analyzer.inputs.hostname')
+_pa_hostname=$(_state_get '.inputs.path_analyzer_hostname')
 PATH_DST_HOSTNAME="${_pa_hostname:-objectstorage.${OCI_REGION}.oraclecloud.com}"
-_pa_protocol=$(_state_get '.path_analyzer.inputs.protocol')
+_pa_protocol=$(_state_get '.inputs.path_analyzer_protocol')
 PATH_PROTOCOL="${_pa_protocol:-tcp}"
-_pa_port=$(_state_get '.path_analyzer.inputs.port')
+_pa_port=$(_state_get '.inputs.path_analyzer_port')
 PATH_DST_PORT="${_pa_port:-443}"
-_pa_timeout=$(_state_get '.path_analyzer.inputs.timeout')
+_pa_timeout=$(_state_get '.inputs.path_analyzer_timeout')
 PATH_TIMEOUT="${_pa_timeout:-180}"
-_pa_dst_ip=$(_state_get '.path_analyzer.inputs.dst_ip')
+_pa_dst_ip=$(_state_get '.inputs.path_analyzer_dst_ip')
 PATH_DST_IP="${_pa_dst_ip:-}"
-_pa_label=$(_state_get '.path_analyzer.inputs.label')
+_pa_label=$(_state_get '.inputs.path_analyzer_label')
 PATH_LABEL="${_pa_label:-}"
 
 # Resolve IP: use explicit PATH_DST_IP if given, otherwise resolve hostname
@@ -116,7 +116,8 @@ else
   fi
 fi
 
-# Append result to state
+# Append result to state — inputs and timestamp embedded for run context
+_timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 if [ "$PATH_PROTOCOL" = "icmp" ]; then
   entry=$(jq -n \
     --arg label    "$PATH_LABEL" \
@@ -124,7 +125,8 @@ if [ "$PATH_PROTOCOL" = "icmp" ]; then
     --arg ip       "$PATH_DST_IP" \
     --arg proto    "$PATH_PROTOCOL" \
     --arg res      "$result" \
-    '{label:$label, dst_hostname:$hostname, dst_ip:$ip, protocol:$proto, result:$res}')
+    --arg ts       "$_timestamp" \
+    '{inputs:{hostname:$hostname, dst_ip:$ip, protocol:$proto}, label:$label, result:$res, timestamp:$ts}')
 else
   entry=$(jq -n \
     --arg label    "$PATH_LABEL" \
@@ -133,7 +135,8 @@ else
     --arg proto    "$PATH_PROTOCOL" \
     --argjson port "$PATH_DST_PORT" \
     --arg res      "$result" \
-    '{label:$label, dst_hostname:$hostname, dst_ip:$ip, protocol:$proto, dst_port:$port, result:$res}')
+    --arg ts       "$_timestamp" \
+    '{inputs:{hostname:$hostname, dst_ip:$ip, protocol:$proto, port:$port}, label:$label, result:$res, timestamp:$ts}')
 fi
 
 _state_append '.path_analyzer' "$entry"
