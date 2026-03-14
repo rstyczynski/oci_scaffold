@@ -371,9 +371,42 @@ done
 
 The same loop handles edge cases from prior interrupted runs: if the compartment is already in DELETING state, the loop waits for it to settle; if it ended in FAILED state, it recovers it with `oci iam compartment recover` before retrying.
 
+### Dynamic CLI argument pass-through (`_state_extra_args`)
+
+`do/oci_scaffold.sh` provides `_state_extra_args` — a shared helper that builds optional OCI CLI flags from state inputs at runtime, without hardcoding a flag per field in each script.
+
+**Convention:** `.inputs.<prefix>_<suffix>` → `--<suffix>` (underscores replaced with hyphens). Required keys that must not be forwarded are listed as skip arguments.
+
+```bash
+# Signature
+_state_extra_args <prefix> <array_var> [skip_key ...]
+
+# Example — bucket with optional KMS key and storage tier
+_extra_args=()
+_state_extra_args bucket _extra_args name   # skips .inputs.bucket_name
+oci os bucket create \
+  --namespace-name "$NAMESPACE" \
+  --compartment-id "$OCI_COMPARTMENT" \
+  --name "$BUCKET_NAME" \
+  "${_extra_args[@]}"
+```
+
+State key → CLI flag examples:
+
+| State key | CLI flag |
+| --- | --- |
+| `.inputs.bucket_kms_key_id` | `--kms-key-id` |
+| `.inputs.bucket_storage_tier` | `--storage-tier` |
+| `.inputs.bucket_public_access_type` | `--public-access-type` |
+
+Adding support for a new optional OCI parameter requires no script changes — set the key in state before calling the ensure script.
+
+Currently used by `ensure-bucket.sh`. Extend to other ensure scripts by following the same pattern.
+
 ## Backlog
 
 - **Apply self-polling to other resources** — currently only `teardown-compartment.sh` uses explicit work-request polling with live progress. Evaluate whether other long-running teardown operations (e.g. vault, log) benefit from the same treatment, or whether the silent `--wait-for-state` is sufficient for those resources.
+- **Apply `_state_extra_args` to all ensure scripts** — currently only `ensure-bucket.sh` uses dynamic CLI argument pass-through. Apply the same pattern to the remaining ensure scripts (`ensure-vcn.sh`, `ensure-subnet.sh`, `ensure-vault.sh`, `ensure-key.sh`, `ensure-secret.sh`, `ensure-fn_app.sh`, `ensure-log.sh`, etc.) so optional OCI CLI flags can be passed to any resource without script changes.
 
 ## Dependencies
 
