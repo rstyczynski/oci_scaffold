@@ -268,6 +268,7 @@ These are set by the cycle scripts and shared by many ensure scripts:
 | --- | --- | --- |
 | `.inputs.bucket_name` | `{NAME_PREFIX}-bucket` | Object Storage bucket name (`ensure-bucket.sh`) |
 | `.inputs.oci_namespace` | discovered | Object Storage namespace (`ensure-bucket.sh`) |
+| `.inputs.bucket_<flag>` | *(none)* | **Pass-through** (`ensure-bucket.sh` only) — any `bucket_`-prefixed key is forwarded to `oci os bucket create` as `--<flag>` (underscores → hyphens). E.g. `.inputs.bucket_kms_key_id` → `--kms-key-id`, `.inputs.bucket_storage_tier` → `--storage-tier`. |
 | `.inputs.log_group_name` | `{NAME_PREFIX}-logs` | Log Group name (`ensure-log_group.sh`) |
 | `.inputs.log_source_service` | `functions` or `objectstorage` | Service name for log source (`ensure-log.sh`, `cycle-log.sh`) |
 | `.inputs.log_source_resource` | — | Resource identifier to scope logs (e.g. bucket or Fn app) (`ensure-log.sh`, `cycle-log.sh`) |

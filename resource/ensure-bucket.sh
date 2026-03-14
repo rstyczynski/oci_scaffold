@@ -7,6 +7,13 @@
 #   .inputs.bucket_name            (optional, default: {NAME_PREFIX}-bucket)
 #   .inputs.oci_namespace          (optional, discovered automatically)
 #
+#   Any additional .inputs.bucket_<flag> key is passed through automatically
+#   as --<flag> to `oci os bucket create` (underscores converted to hyphens).
+#   Example:
+#     .inputs.bucket_kms_key_id      → --kms-key-id      (SSE-MEK encryption)
+#     .inputs.bucket_storage_tier    → --storage-tier     (Standard|Archive|InfrequentAccess)
+#     .inputs.bucket_public_access_type → --public-access-type
+#
 # Writes to state.json:
 #   .bucket.name
 #   .bucket.namespace
@@ -34,11 +41,15 @@ EXISTS=$(oci os bucket get \
   --bucket-name "$BUCKET_NAME" \
   --query 'data.name' --raw-output 2>/dev/null) || true
 
+_extra_args=()
+_state_extra_args bucket _extra_args name
+
 if [ -z "$EXISTS" ] || [ "$EXISTS" = "null" ]; then
   oci os bucket create \
     --namespace-name "$NAMESPACE" \
     --compartment-id "$OCI_COMPARTMENT" \
-    --name "$BUCKET_NAME" >/dev/null
+    --name "$BUCKET_NAME" \
+    "${_extra_args[@]}" >/dev/null
   _done "Bucket created: $BUCKET_NAME"
   _state_set '.bucket.created' true
 else

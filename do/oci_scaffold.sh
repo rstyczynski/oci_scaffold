@@ -126,6 +126,35 @@ _state_append_once() {
   echo "$tmp" > "$STATE_FILE"
 }
 
+# ── extra-args helper ──────────────────────────────────────────────────────
+
+# _state_extra_args <prefix> <array_var> [skip_key ...]
+# Reads all .inputs.<prefix>_* keys from STATE_FILE and appends matching
+# OCI CLI flags to the named array variable.  Key suffix → flag:
+#   <prefix>_kms_key_id  →  --kms-key-id  (strip prefix, underscores → hyphens)
+# Caller must declare the array before calling this function.
+# Skip keys (without prefix) are never added (e.g. "name" skips <prefix>_name).
+# Usage:
+#   _extra=(); _state_extra_args bucket _extra name namespace
+#   oci os bucket create ... "${_extra[@]}"
+_state_extra_args() {
+  local prefix="$1"
+  local -n _sea_arr="$2"
+  shift 2
+  local _skip=" $* "            # space-padded for whole-word match
+  local _k _v _suffix _flag
+  while IFS=$'\t' read -r _k _v; do
+    _suffix="${_k#"${prefix}_"}"
+    [[ "$_skip" == *" $_suffix "* ]] && continue
+    [ -n "${_v:-}" ] && [ "$_v" != "null" ] || continue
+    _flag="--${_suffix//_/-}"
+    _sea_arr+=("$_flag" "$_v")
+  done < <(jq -r --arg p "${prefix}_" \
+    '.inputs | to_entries[]
+     | select(.key | startswith($p))
+     | [.key, (.value // "")] | @tsv' "$STATE_FILE")
+}
+
 # ── OCI discovery helpers ──────────────────────────────────────────────────
 
 # _oci_tenancy_ocid
