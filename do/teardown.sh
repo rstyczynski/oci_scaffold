@@ -68,14 +68,15 @@ fi
 _state_set '.meta.torn_down_at' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 # Archive state: rename state-<prefix>.json → state-<prefix>.deleted-<timestamp>.json
-# Skip if the file is already an archived (.deleted-*) file.
+# If already an archived file, copy instead of move to preserve the original.
+ts="$(date -u +%Y%m%dT%H%M%S)"
 if [[ "$STATE_FILE" == *.deleted-* ]]; then
-  echo "  [INFO] State already archived: $STATE_FILE"
+  archived="${STATE_FILE%.json}.reteardown-${ts}.json"
+  cp "$STATE_FILE" "$archived"
 else
-  ts="$(date -u +%Y%m%dT%H%M%S)"
   archived="${STATE_FILE%.json}.deleted-${ts}.json"
-  echo "  [INFO] State archived: $archived"
   mv "$STATE_FILE" "$archived"
-  export STATE_FILE="$archived"
 fi
+echo "  [INFO] State archived: $archived"
+export STATE_FILE="$archived"
 

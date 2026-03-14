@@ -16,7 +16,7 @@
 #   .inputs.path_analyzer_timeout        poll timeout seconds (default: 180)
 #
 # Appends to state.json:
-#   .path_analyzer[]  { label, dst_ip, protocol, dst_port, result }
+#   .path_analyzer[]  { inputs:{hostname, dst_ip, protocol, port}, label, result, timestamp }
 set -euo pipefail
 # shellcheck source=do/oci_scaffold.sh
 source "$(dirname "$0")/../do/oci_scaffold.sh"
