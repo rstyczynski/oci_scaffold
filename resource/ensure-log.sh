@@ -4,7 +4,7 @@
 # Reads from state.json:
 #   .inputs.oci_compartment        (required)
 #   .inputs.name_prefix            (required)
-#   .log_group.ocid                (required — from ensure-log-group.sh)
+#   .log_group.ocid                (required — from ensure-log_group.sh)
 #   .inputs.log_source_service     (optional, default: functions)
 #   .inputs.log_source_resource    (optional — resource name to scope the log; omit to log all resources in compartment)
 #   .inputs.log_source_category    (optional, default: invoke)

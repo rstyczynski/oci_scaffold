@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ensure-log-group.sh — idempotent OCI Logging log-group creation
+# ensure-log_group.sh — idempotent OCI Logging log-group creation
 #
 # Reads from state.json:
 #   .inputs.oci_compartment        (required)

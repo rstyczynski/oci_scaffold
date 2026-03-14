@@ -27,13 +27,13 @@ ensure-subnet.sh
 
 # ── connectivity checks ────────────────────────────────────────────────────
 # OSN via SGW — objectstorage.{region}.oraclecloud.com tcp/443
-ensure-path-analyzer.sh
+ensure-path_analyzer.sh
 
 # Internet via NAT GW
 _state_set '.path_analyzer.inputs.protocol' tcp
 _state_set '.path_analyzer.inputs.hostname' oracle.com
 _state_set '.path_analyzer.inputs.port' 443
-ensure-path-analyzer.sh
+ensure-path_analyzer.sh
 
 # ── your test assertions go here ───────────────────────────────────────────
 SUBNET_OCID=$(_state_get '.subnet.ocid')

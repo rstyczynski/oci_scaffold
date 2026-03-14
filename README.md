@@ -255,7 +255,7 @@ These are set by the cycle scripts and shared by many ensure scripts:
 | --- | --- | --- |
 | `.inputs.bucket_name` | `{NAME_PREFIX}-bucket` | Object Storage bucket name (`ensure-bucket.sh`) |
 | `.inputs.oci_namespace` | discovered | Object Storage namespace (`ensure-bucket.sh`) |
-| `.inputs.log_group_name` | `{NAME_PREFIX}-logs` | Log Group name (`ensure-log-group.sh`) |
+| `.inputs.log_group_name` | `{NAME_PREFIX}-logs` | Log Group name (`ensure-log_group.sh`) |
 | `.inputs.log_source_service` | `functions` or `objectstorage` | Service name for log source (`ensure-log.sh`, `cycle-log.sh`) |
 | `.inputs.log_source_resource` | — | Resource identifier to scope logs (e.g. bucket or Fn app) (`ensure-log.sh`, `cycle-log.sh`) |
 | `.inputs.log_source_category` | `invoke` or `write` | Log source category (`ensure-log.sh`, `cycle-log.sh`) |
@@ -265,8 +265,8 @@ These are set by the cycle scripts and shared by many ensure scripts:
 
 | Key | Default | Description |
 | --- | --- | --- |
-| `.inputs.fn_app_name` | `{NAME_PREFIX}-fn-app` | Fn Application name (`ensure-fn-app.sh`) |
-| `.inputs.fn_shape` | `GENERIC_X86` / `GENERIC_ARM` | Fn Application shape (`ensure-fn-app.sh`) |
+| `.inputs.fn_app_name` | `{NAME_PREFIX}-fn-app` | Fn Application name (`ensure-fn_app.sh`) |
+| `.inputs.fn_shape` | `GENERIC_X86` / `GENERIC_ARM` | Fn Application shape (`ensure-fn_app.sh`) |
 
 ### Compartment path `.inputs.*` keys
 

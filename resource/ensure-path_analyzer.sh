@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ensure-path-analyzer.sh — OCI Network Path Analyzer connectivity check
+# ensure-path_analyzer.sh — OCI Network Path Analyzer connectivity check
 #
 # Transient: submits an adhoc path analysis work request and polls result.
 # No teardown entry needed.

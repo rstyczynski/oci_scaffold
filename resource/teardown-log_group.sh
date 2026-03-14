@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# teardown-log_group.sh — delete OCI Logging log-group if created by ensure-log-group.sh
+# teardown-log_group.sh — delete OCI Logging log-group if created by ensure-log_group.sh
 #
 # Reads from state.json:
 #   .log_group.ocid

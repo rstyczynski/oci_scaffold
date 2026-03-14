@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# teardown-fn_app.sh — delete OCI Functions Application if created by ensure-fn-app.sh
+# teardown-fn_app.sh — delete OCI Functions Application if created by ensure-fn_app.sh
 #
 # Reads from state.json:
 #   .fn_app.ocid

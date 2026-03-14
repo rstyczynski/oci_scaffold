@@ -29,7 +29,7 @@ ensure-subnet.sh
 
 # ── connectivity checks ────────────────────────────────────────────────────
 # SGW/OSN only — default is objectstorage.{region}.oraclecloud.com tcp/443
-ensure-path-analyzer.sh
+ensure-path_analyzer.sh
 
 # ── your test assertions go here ───────────────────────────────────────────
 SUBNET_OCID=$(_state_get '.subnet.ocid')

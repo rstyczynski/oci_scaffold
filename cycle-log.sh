@@ -26,7 +26,7 @@ ensure-bucket.sh
 # wire bucket name as log source (objectstorage service logs require bucket name as resource)
 _state_set '.inputs.log_source_resource' "$(_state_get '.bucket.name')"
 
-ensure-log-group.sh
+ensure-log_group.sh
 ensure-log.sh
 
 # ── your test assertions go here ───────────────────────────────────────────

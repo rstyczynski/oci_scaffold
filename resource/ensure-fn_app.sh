@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ensure-fn-app.sh — idempotent OCI Functions Application creation
+# ensure-fn_app.sh — idempotent OCI Functions Application creation
 #
 # Reads from state.json:
 #   .inputs.oci_compartment        (required)
