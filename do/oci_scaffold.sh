@@ -273,3 +273,15 @@ if [ "${_OCI_SCAFFOLD_STATE_FILE_REPORTED:-}" != "$STATE_FILE" ]; then
   _info "STATE_FILE: $STATE_FILE"
   export _OCI_SCAFFOLD_STATE_FILE_REPORTED="$STATE_FILE"
 fi
+
+# Auto-detect new run: generate _OCI_SCAFFOLD_RUN_ID once per process tree,
+# then reset summary counters when it differs from what is stored in state.
+# Child scripts (ensure-*.sh, teardown.sh) inherit the exported var and skip the reset.
+if [ -z "${_OCI_SCAFFOLD_RUN_ID:-}" ]; then
+  _OCI_SCAFFOLD_RUN_ID="${$}-${RANDOM}-$(date +%s)"
+  export _OCI_SCAFFOLD_RUN_ID
+fi
+if [ "$(_state_get '.meta.run_id')" != "$_OCI_SCAFFOLD_RUN_ID" ]; then
+  _summary_reset
+  _state_set '.meta.run_id' "$_OCI_SCAFFOLD_RUN_ID"
+fi

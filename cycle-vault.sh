@@ -17,7 +17,6 @@ export PATH="$DIR/do:$DIR/resource:$PATH"
 : "${NAME_PREFIX:?NAME_PREFIX must be set}"
 : "${SECRET_VALUE:?SECRET_VALUE must be set}"
 source "$DIR/do/oci_scaffold.sh"
-_summary_reset
 
 # create compartment path for this cycle
 _state_set '.inputs.compartment_path' /oci_scaffold/vault

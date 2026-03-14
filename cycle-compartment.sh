@@ -15,7 +15,6 @@ export PATH="$DIR/do:$DIR/resource:$PATH"
 : "${NAME_PREFIX:?NAME_PREFIX must be set}"
 : "${COMPARTMENT_PATH:?COMPARTMENT_PATH must be set}"
 source "$DIR/do/oci_scaffold.sh"
-_summary_reset
 
 # ── seed inputs ────────────────────────────────────────────────────────────
 _state_set '.inputs.oci_compartment'   "$OCI_COMPARTMENT"
