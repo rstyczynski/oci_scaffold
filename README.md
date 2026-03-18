@@ -29,12 +29,12 @@ cycle-compartment.sh    # Full cycle: IAM compartment path creation
 ```bash
 # OCI_REGION is optional — defaults to home region
 
-# OCI_COMPARTMENT is optional — defaults to tenancy OCID
+# COMPARTMENT_OCID is optional — defaults to tenancy OCID
 # here we will set active compartment to /oci_scaffold/test
 source do/oci_scaffold.sh
 _state_set '.inputs.compartment_path' /oci_scaffold/test
 resource/ensure-compartment.sh
-export OCI_COMPARTMENT=$(_state_get '.compartment.ocid')
+export COMPARTMENT_OCID=$(_state_get '.compartment.ocid')
 unset STATE_FILE
 
 
@@ -151,7 +151,7 @@ NAME_PREFIX=secret SECRET_VALUE=myvalue \
   VAULT_DELETION_DAYS=14 KEY_DELETION_DAYS=14 ./cycle-vault.sh
 ```
 
-`OCI_COMPARTMENT` is optional; omit it to use the tenancy OCID.
+`COMPARTMENT_OCID` is optional; omit it to use the tenancy OCID.
 
 After the script completes the vault and key are in `PENDING_DELETION`. They will be permanently removed by OCI after the configured number of days — no further action is required.
 
@@ -224,7 +224,7 @@ Summary counters (`created`, `existing`, `tested`, `failed`) are reset at the st
 | Variable | Default | Description |
 | --- | --- | --- |
 | `NAME_PREFIX` | **required** | Prefix for all created resource names (also used in default state file name) |
-| `OCI_COMPARTMENT` | tenancy OCID | Target compartment; auto-discovered from tenancy when omitted |
+| `COMPARTMENT_OCID` | tenancy OCID | Target compartment; auto-discovered from tenancy when omitted |
 | `OCI_REGION` | home region | Region identifier (e.g. `eu-zurich-1`); auto-discovered from home region when omitted |
 | `STATE_FILE` | `./state-{NAME_PREFIX}.json` | JSON state file path; set before sourcing `do/oci_scaffold.sh` |
 
@@ -297,10 +297,10 @@ Use `_oci_compartment_ocid_by_path` to resolve a compartment OCID by its full pa
 source do/oci_scaffold.sh
 
 # arbitrary depth — walk each segment step by step
-OCI_COMPARTMENT=$(_oci_compartment_ocid_by_path "/landing-zone/workloads/teams/myapp")
+COMPARTMENT_OCID=$(_oci_compartment_ocid_by_path "/landing-zone/workloads/teams/myapp")
 
 # single level
-OCI_COMPARTMENT=$(_oci_compartment_ocid_by_path "/myapp")
+COMPARTMENT_OCID=$(_oci_compartment_ocid_by_path "/myapp")
 ```
 
 If any segment is not found the function prints `[ERROR] Compartment not found at path segment: <name>` and returns 1. Only `ACTIVE` compartments are matched at each level.
@@ -309,10 +309,10 @@ If any segment is not found the function prints `[ERROR] Compartment not found a
 
 ```bash
 export NAME_PREFIX=mytest
-# export OCI_COMPARTMENT="ocid1.compartment..."  # optional
+# export COMPARTMENT_OCID="ocid1.compartment..."  # optional
 
 source do/oci_scaffold.sh
-_state_set '.inputs.oci_compartment' "$OCI_COMPARTMENT"
+_state_set '.inputs.oci_compartment' "$COMPARTMENT_OCID"
 _state_set '.inputs.name_prefix'     "$NAME_PREFIX"
 
 resource/ensure-vcn.sh
@@ -387,7 +387,7 @@ _extra_args=()
 _state_extra_args bucket _extra_args name   # skips .inputs.bucket_name
 oci os bucket create \
   --namespace-name "$NAMESPACE" \
-  --compartment-id "$OCI_COMPARTMENT" \
+  --compartment-id "$COMPARTMENT_OCID" \
   --name "$BUCKET_NAME" \
   "${_extra_args[@]}"
 ```
@@ -414,7 +414,7 @@ A bucket created by one cycle can be adopted by another using its OCID. The adop
 export NAME_PREFIX=storage
 source do/oci_scaffold.sh
 
-_state_set '.inputs.oci_compartment' "$OCI_COMPARTMENT"
+_state_set '.inputs.oci_compartment' "$COMPARTMENT_OCID"
 _state_set '.inputs.name_prefix'     "$NAME_PREFIX"
 
 resource/ensure-bucket.sh

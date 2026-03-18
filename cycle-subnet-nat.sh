@@ -4,7 +4,7 @@
 # Usage:
 #   NAME_PREFIX=test1 ./cycle-subnet-nat.sh
 #   OCI_REGION=eu-zurich-1 NAME_PREFIX=test1 ./cycle-subnet-nat.sh  # optional: override default (home region)
-#   OCI_COMPARTMENT=... OCI_REGION=... NAME_PREFIX=test1 ./cycle-subnet-nat.sh
+#   COMPARTMENT_OCID=... OCI_REGION=... NAME_PREFIX=test1 ./cycle-subnet-nat.sh
 set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
 export PATH="$DIR/do:$DIR/resource:$PATH"
@@ -13,7 +13,7 @@ export PATH="$DIR/do:$DIR/resource:$PATH"
 source "$DIR/do/oci_scaffold.sh"
 
 # ── seed inputs ────────────────────────────────────────────────────────────
-_state_set '.inputs.oci_compartment' "$OCI_COMPARTMENT"
+_state_set '.inputs.oci_compartment' "$COMPARTMENT_OCID"
 _state_set '.inputs.oci_region'      "$OCI_REGION"
 _state_set '.inputs.name_prefix'     "$NAME_PREFIX"
 

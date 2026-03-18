@@ -16,14 +16,14 @@ set -euo pipefail
 # shellcheck source=do/oci_scaffold.sh
 source "$(dirname "$0")/../do/oci_scaffold.sh"
 
-OCI_COMPARTMENT=$(_state_get '.inputs.oci_compartment')
+COMPARTMENT_OCID=$(_state_get '.inputs.oci_compartment')
 NAME_PREFIX=$(_state_get '.inputs.name_prefix')
 VCN_OCID=$(_state_get '.vcn.ocid')
 SGW_OCID=$(_state_get '.sgw.ocid')
 OSN_CIDR=$(_state_get '.sgw.osn_cidr')
 NATGW_OCID=$(_state_get '.natgw.ocid')
 
-_require_env OCI_COMPARTMENT NAME_PREFIX VCN_OCID
+_require_env COMPARTMENT_OCID NAME_PREFIX VCN_OCID
 
 rt_name="${NAME_PREFIX}-rt"
 
@@ -45,7 +45,7 @@ _build_route_rules() {
 }
 
 RT_OCID=$(oci network route-table list \
-  --compartment-id "$OCI_COMPARTMENT" \
+  --compartment-id "$COMPARTMENT_OCID" \
   --vcn-id "$VCN_OCID" \
   --display-name "$rt_name" \
   --lifecycle-state AVAILABLE \
@@ -54,7 +54,7 @@ RT_OCID=$(oci network route-table list \
 if [ -z "$RT_OCID" ] || [ "$RT_OCID" = "null" ]; then
   rt_rules=$(_build_route_rules)
   RT_OCID=$(oci network route-table create \
-    --compartment-id "$OCI_COMPARTMENT" \
+    --compartment-id "$COMPARTMENT_OCID" \
     --vcn-id "$VCN_OCID" \
     --display-name "$rt_name" \
     --route-rules "$rt_rules" \

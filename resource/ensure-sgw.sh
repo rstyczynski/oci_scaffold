@@ -15,11 +15,11 @@ set -euo pipefail
 # shellcheck source=do/oci_scaffold.sh
 source "$(dirname "$0")/../do/oci_scaffold.sh"
 
-OCI_COMPARTMENT=$(_state_get '.inputs.oci_compartment')
+COMPARTMENT_OCID=$(_state_get '.inputs.oci_compartment')
 NAME_PREFIX=$(_state_get '.inputs.name_prefix')
 VCN_OCID=$(_state_get '.vcn.ocid')
 
-_require_env OCI_COMPARTMENT NAME_PREFIX VCN_OCID
+_require_env COMPARTMENT_OCID NAME_PREFIX VCN_OCID
 
 sgw_name="${NAME_PREFIX}-sgw"
 
@@ -33,14 +33,14 @@ if [ -z "$OSN_OCID" ] || [ "$OSN_OCID" = "null" ]; then
 fi
 
 SGW_OCID=$(oci network service-gateway list \
-  --compartment-id "$OCI_COMPARTMENT" \
+  --compartment-id "$COMPARTMENT_OCID" \
   --vcn-id "$VCN_OCID" \
   --lifecycle-state AVAILABLE \
   --query "data[?\"display-name\"==\`$sgw_name\`] | [0].id" --raw-output 2>/dev/null) || true
 
 if [ -z "$SGW_OCID" ] || [ "$SGW_OCID" = "null" ]; then
   SGW_OCID=$(oci network service-gateway create \
-    --compartment-id "$OCI_COMPARTMENT" \
+    --compartment-id "$COMPARTMENT_OCID" \
     --vcn-id "$VCN_OCID" \
     --services "[{\"serviceId\":\"$OSN_OCID\"}]" \
     --display-name "$sgw_name" \

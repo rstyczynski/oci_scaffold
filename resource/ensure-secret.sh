@@ -17,7 +17,7 @@ set -euo pipefail
 # shellcheck source=do/oci_scaffold.sh
 source "$(dirname "$0")/../do/oci_scaffold.sh"
 
-OCI_COMPARTMENT=$(_state_get '.inputs.oci_compartment')
+COMPARTMENT_OCID=$(_state_get '.inputs.oci_compartment')
 NAME_PREFIX=$(_state_get '.inputs.name_prefix')
 VAULT_OCID=$(_state_get '.vault.ocid')
 KEY_OCID=$(_state_get '.key.ocid')
@@ -25,7 +25,7 @@ SECRET_NAME=$(_state_get '.inputs.secret_name')
 SECRET_NAME="${SECRET_NAME:-${NAME_PREFIX}-secret}"
 SECRET_VALUE=$(_state_get '.inputs.secret_value')
 
-_require_env OCI_COMPARTMENT NAME_PREFIX VAULT_OCID KEY_OCID SECRET_VALUE
+_require_env COMPARTMENT_OCID NAME_PREFIX VAULT_OCID KEY_OCID SECRET_VALUE
 
 # If a previous teardown scheduled deletion, cancel it or start fresh.
 PREV_OCID=$(_state_get '.secret.ocid')
@@ -46,7 +46,7 @@ fi
 secret_content=$(echo -n "$SECRET_VALUE" | base64)
 
 SECRET_OCID=$(oci vault secret list \
-  --compartment-id "$OCI_COMPARTMENT" \
+  --compartment-id "$COMPARTMENT_OCID" \
   --vault-id "$VAULT_OCID" \
   --lifecycle-state ACTIVE \
   --all \
@@ -55,7 +55,7 @@ SECRET_OCID=$(oci vault secret list \
 
 if [ -z "$SECRET_OCID" ] || [ "$SECRET_OCID" = "null" ]; then
   SECRET_OCID=$(oci vault secret create-base64 \
-    --compartment-id "$OCI_COMPARTMENT" \
+    --compartment-id "$COMPARTMENT_OCID" \
     --vault-id "$VAULT_OCID" \
     --key-id "$KEY_OCID" \
     --secret-name "$SECRET_NAME" \

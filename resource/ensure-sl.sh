@@ -15,7 +15,7 @@ set -euo pipefail
 # shellcheck source=do/oci_scaffold.sh
 source "$(dirname "$0")/../do/oci_scaffold.sh"
 
-OCI_COMPARTMENT=$(_state_get '.inputs.oci_compartment')
+COMPARTMENT_OCID=$(_state_get '.inputs.oci_compartment')
 NAME_PREFIX=$(_state_get '.inputs.name_prefix')
 VCN_OCID=$(_state_get '.vcn.ocid')
 SL_EGRESS_CIDR=$(_state_get '.inputs.sl_egress_cidr')
@@ -24,12 +24,12 @@ SL_EGRESS_PROTOCOL=$(_state_get '.inputs.sl_egress_protocol')
 SL_EGRESS_CIDR="${SL_EGRESS_CIDR:-0.0.0.0/0}"
 SL_EGRESS_PROTOCOL="${SL_EGRESS_PROTOCOL:-all}"
 
-_require_env OCI_COMPARTMENT NAME_PREFIX VCN_OCID
+_require_env COMPARTMENT_OCID NAME_PREFIX VCN_OCID
 
 sl_name="${NAME_PREFIX}-sl"
 
 SL_OCID=$(oci network security-list list \
-  --compartment-id "$OCI_COMPARTMENT" \
+  --compartment-id "$COMPARTMENT_OCID" \
   --vcn-id "$VCN_OCID" \
   --display-name "$sl_name" \
   --lifecycle-state AVAILABLE \
@@ -41,7 +41,7 @@ if [ -z "$SL_OCID" ] || [ "$SL_OCID" = "null" ]; then
     --arg proto "$SL_EGRESS_PROTOCOL" \
     '[{"destination":$cidr,"destinationType":"CIDR_BLOCK","protocol":$proto,"isStateless":false}]')
   SL_OCID=$(oci network security-list create \
-    --compartment-id "$OCI_COMPARTMENT" \
+    --compartment-id "$COMPARTMENT_OCID" \
     --vcn-id "$VCN_OCID" \
     --display-name "$sl_name" \
     --egress-security-rules "$egress_rules" \

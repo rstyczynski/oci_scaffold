@@ -16,7 +16,7 @@ set -euo pipefail
 # shellcheck source=do/oci_scaffold.sh
 source "$(dirname "$0")/../do/oci_scaffold.sh"
 
-OCI_COMPARTMENT=$(_state_get '.inputs.oci_compartment')
+COMPARTMENT_OCID=$(_state_get '.inputs.oci_compartment')
 NAME_PREFIX=$(_state_get '.inputs.name_prefix')
 SUBNET_OCID=$(_state_get '.subnet.ocid')
 FN_APP_NAME=$(_state_get '.inputs.fn_app_name')
@@ -30,17 +30,17 @@ if [ -z "$FN_SHAPE" ] || [ "$FN_SHAPE" = "null" ]; then
   fi
 fi
 
-_require_env OCI_COMPARTMENT NAME_PREFIX SUBNET_OCID
+_require_env COMPARTMENT_OCID NAME_PREFIX SUBNET_OCID
 
 FN_APP_OCID=$(oci fn application list \
-  --compartment-id "$OCI_COMPARTMENT" \
+  --compartment-id "$COMPARTMENT_OCID" \
   --display-name "$FN_APP_NAME" \
   --query 'data[?("lifecycle-state"==`ACTIVE`)].id | [0]' \
   --raw-output 2>/dev/null) || true
 
 if [ -z "$FN_APP_OCID" ] || [ "$FN_APP_OCID" = "null" ]; then
   FN_APP_OCID=$(oci fn application create \
-    --compartment-id "$OCI_COMPARTMENT" \
+    --compartment-id "$COMPARTMENT_OCID" \
     --display-name "$FN_APP_NAME" \
     --subnet-ids "[\"$SUBNET_OCID\"]" \
     --shape "$FN_SHAPE" \

@@ -17,7 +17,7 @@ set -euo pipefail
 # shellcheck source=do/oci_scaffold.sh
 source "$(dirname "$0")/../do/oci_scaffold.sh"
 
-OCI_COMPARTMENT=$(_state_get '.inputs.oci_compartment')
+COMPARTMENT_OCID=$(_state_get '.inputs.oci_compartment')
 NAME_PREFIX=$(_state_get '.inputs.name_prefix')
 LOG_GROUP_OCID=$(_state_get '.log_group.ocid')
 LOG_SOURCE_SERVICE=$(_state_get '.inputs.log_source_service')
@@ -28,7 +28,7 @@ LOG_SOURCE_CATEGORY="${LOG_SOURCE_CATEGORY:-invoke}"
 LOG_NAME=$(_state_get '.inputs.log_name')
 LOG_NAME="${LOG_NAME:-${NAME_PREFIX}-invoke}"
 
-_require_env OCI_COMPARTMENT NAME_PREFIX LOG_GROUP_OCID
+_require_env COMPARTMENT_OCID NAME_PREFIX LOG_GROUP_OCID
 
 LOG_OCID=$(oci logging log list \
   --log-group-id "$LOG_GROUP_OCID" \
@@ -40,9 +40,9 @@ if [ -z "$LOG_OCID" ] || [ "$LOG_OCID" = "null" ]; then
   # CLI does not hang when OCI returns FAILED instead of SUCCEEDED.
   # Build source config: resource is optional (omit to log all resources in compartment)
   if [ -n "$LOG_SOURCE_RESOURCE" ]; then
-    LOG_CFG="{\"source\":{\"sourceType\":\"OCISERVICE\",\"service\":\"$LOG_SOURCE_SERVICE\",\"resource\":\"$LOG_SOURCE_RESOURCE\",\"category\":\"$LOG_SOURCE_CATEGORY\"},\"compartmentId\":\"$OCI_COMPARTMENT\"}"
+    LOG_CFG="{\"source\":{\"sourceType\":\"OCISERVICE\",\"service\":\"$LOG_SOURCE_SERVICE\",\"resource\":\"$LOG_SOURCE_RESOURCE\",\"category\":\"$LOG_SOURCE_CATEGORY\"},\"compartmentId\":\"$COMPARTMENT_OCID\"}"
   else
-    LOG_CFG="{\"source\":{\"sourceType\":\"OCISERVICE\",\"service\":\"$LOG_SOURCE_SERVICE\",\"category\":\"$LOG_SOURCE_CATEGORY\"},\"compartmentId\":\"$OCI_COMPARTMENT\"}"
+    LOG_CFG="{\"source\":{\"sourceType\":\"OCISERVICE\",\"service\":\"$LOG_SOURCE_SERVICE\",\"category\":\"$LOG_SOURCE_CATEGORY\"},\"compartmentId\":\"$COMPARTMENT_OCID\"}"
   fi
 
   _WR_STDERR=$(mktemp)

@@ -18,7 +18,7 @@ set -euo pipefail
 # shellcheck source=do/oci_scaffold.sh
 source "$(dirname "$0")/../do/oci_scaffold.sh"
 
-OCI_COMPARTMENT=$(_state_get '.inputs.oci_compartment')
+COMPARTMENT_OCID=$(_state_get '.inputs.oci_compartment')
 NAME_PREFIX=$(_state_get '.inputs.name_prefix')
 VCN_OCID=$(_state_get '.vcn.ocid')
 RT_OCID=$(_state_get '.rt.ocid')
@@ -29,12 +29,12 @@ SUBNET_PROHIBIT_PUBLIC_IP=$(_state_get '.inputs.subnet_prohibit_public_ip')
 SUBNET_CIDR="${SUBNET_CIDR:-10.0.0.0/24}"
 SUBNET_PROHIBIT_PUBLIC_IP="${SUBNET_PROHIBIT_PUBLIC_IP:-true}"
 
-_require_env OCI_COMPARTMENT NAME_PREFIX VCN_OCID RT_OCID SL_OCID
+_require_env COMPARTMENT_OCID NAME_PREFIX VCN_OCID RT_OCID SL_OCID
 
 subnet_name="${NAME_PREFIX}"
 
 SUBNET_OCID=$(oci network subnet list \
-  --compartment-id "$OCI_COMPARTMENT" \
+  --compartment-id "$COMPARTMENT_OCID" \
   --vcn-id "$VCN_OCID" \
   --display-name "$subnet_name" \
   --lifecycle-state AVAILABLE \
@@ -42,7 +42,7 @@ SUBNET_OCID=$(oci network subnet list \
 
 if [ -z "$SUBNET_OCID" ] || [ "$SUBNET_OCID" = "null" ]; then
   SUBNET_OCID=$(oci network subnet create \
-    --compartment-id "$OCI_COMPARTMENT" \
+    --compartment-id "$COMPARTMENT_OCID" \
     --vcn-id "$VCN_OCID" \
     --cidr-block "$SUBNET_CIDR" \
     --display-name "$subnet_name" \

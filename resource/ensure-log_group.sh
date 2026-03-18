@@ -14,21 +14,21 @@ set -euo pipefail
 # shellcheck source=do/oci_scaffold.sh
 source "$(dirname "$0")/../do/oci_scaffold.sh"
 
-OCI_COMPARTMENT=$(_state_get '.inputs.oci_compartment')
+COMPARTMENT_OCID=$(_state_get '.inputs.oci_compartment')
 NAME_PREFIX=$(_state_get '.inputs.name_prefix')
 LOG_GROUP_NAME=$(_state_get '.inputs.log_group_name')
 LOG_GROUP_NAME="${LOG_GROUP_NAME:-${NAME_PREFIX}-logs}"
 
-_require_env OCI_COMPARTMENT NAME_PREFIX
+_require_env COMPARTMENT_OCID NAME_PREFIX
 
 LOG_GROUP_OCID=$(oci logging log-group list \
-  --compartment-id "$OCI_COMPARTMENT" \
+  --compartment-id "$COMPARTMENT_OCID" \
   --display-name "$LOG_GROUP_NAME" \
   --query 'data[0].id' --raw-output 2>/dev/null) || true
 
 if [ -z "$LOG_GROUP_OCID" ] || [ "$LOG_GROUP_OCID" = "null" ]; then
   WR_STATUS=$(oci logging log-group create \
-    --compartment-id "$OCI_COMPARTMENT" \
+    --compartment-id "$COMPARTMENT_OCID" \
     --display-name "$LOG_GROUP_NAME" \
     --wait-for-state SUCCEEDED \
     --wait-for-state FAILED \
@@ -45,7 +45,7 @@ if [ -z "$LOG_GROUP_OCID" ] || [ "$LOG_GROUP_OCID" = "null" ]; then
   fi
 
   LOG_GROUP_OCID=$(oci logging log-group list \
-    --compartment-id "$OCI_COMPARTMENT" \
+    --compartment-id "$COMPARTMENT_OCID" \
     --display-name "$LOG_GROUP_NAME" \
     --query 'data[0].id' --raw-output)
   _done "Log Group created: $LOG_GROUP_OCID"

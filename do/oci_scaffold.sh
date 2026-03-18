@@ -249,12 +249,12 @@ _oci_compartment_ocid_by_path() {
 }
 
 # _oci_default_compartment
-# Sets OCI_COMPARTMENT to the tenancy OCID if not already set in the environment.
+# Sets COMPARTMENT_OCID to the tenancy OCID if not already set in the environment.
 _oci_default_compartment() {
-  if [ -z "${OCI_COMPARTMENT:-}" ]; then
-    OCI_COMPARTMENT=$(_oci_tenancy_ocid)
-    export OCI_COMPARTMENT
-    _info "OCI_COMPARTMENT defaulted to tenancy: $OCI_COMPARTMENT"
+  if [ -z "${COMPARTMENT_OCID:-}" ]; then
+    COMPARTMENT_OCID=$(_oci_tenancy_ocid)
+    export COMPARTMENT_OCID
+    _info "COMPARTMENT_OCID defaulted to tenancy: $COMPARTMENT_OCID"
   fi
 }
 
@@ -295,7 +295,7 @@ _add_route() {
 }
 
 # ── defaults on load ───────────────────────────────────────────────────────
-# Set OCI_COMPARTMENT and OCI_REGION from tenancy/home when not provided.
+# Set COMPARTMENT_OCID and OCI_REGION from tenancy/home when not provided.
 _oci_default_compartment
 _oci_default_region
 if [ "${_OCI_SCAFFOLD_STATE_FILE_REPORTED:-}" != "$STATE_FILE" ]; then

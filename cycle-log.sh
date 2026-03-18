@@ -3,10 +3,10 @@
 #
 # Usage:
 #   NAME_PREFIX=logs ./cycle-log.sh
-#   OCI_COMPARTMENT=... OCI_REGION=... NAME_PREFIX=logs ./cycle-log.sh
+#   COMPARTMENT_OCID=... OCI_REGION=... NAME_PREFIX=logs ./cycle-log.sh
 #
 # A bucket is created automatically and used as the log source (objectstorage / write).
-# OCI_COMPARTMENT and OCI_REGION are optional; they default to tenancy and home region.
+# COMPARTMENT_OCID and OCI_REGION are optional; they default to tenancy and home region.
 set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
 export PATH="$DIR/do:$DIR/resource:$PATH"
@@ -15,7 +15,7 @@ export PATH="$DIR/do:$DIR/resource:$PATH"
 source "$DIR/do/oci_scaffold.sh"
 
 # ── seed inputs ────────────────────────────────────────────────────────────
-_state_set '.inputs.oci_compartment'       "$OCI_COMPARTMENT"
+_state_set '.inputs.oci_compartment'       "$COMPARTMENT_OCID"
 _state_set '.inputs.name_prefix'           "$NAME_PREFIX"
 _state_set '.inputs.log_source_service'    "objectstorage"
 _state_set '.inputs.log_source_category'   "write"

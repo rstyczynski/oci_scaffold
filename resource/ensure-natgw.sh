@@ -14,25 +14,25 @@ set -euo pipefail
 # shellcheck source=do/oci_scaffold.sh
 source "$(dirname "$0")/../do/oci_scaffold.sh"
 
-OCI_COMPARTMENT=$(_state_get '.inputs.oci_compartment')
+COMPARTMENT_OCID=$(_state_get '.inputs.oci_compartment')
 NAME_PREFIX=$(_state_get '.inputs.name_prefix')
 VCN_OCID=$(_state_get '.vcn.ocid')
 NATGW_BLOCK_TRAFFIC=$(_state_get '.inputs.natgw_block_traffic')
 NATGW_BLOCK_TRAFFIC="${NATGW_BLOCK_TRAFFIC:-false}"
 
-_require_env OCI_COMPARTMENT NAME_PREFIX VCN_OCID
+_require_env COMPARTMENT_OCID NAME_PREFIX VCN_OCID
 
 natgw_name="${NAME_PREFIX}-natgw"
 
 NATGW_OCID=$(oci network nat-gateway list \
-  --compartment-id "$OCI_COMPARTMENT" \
+  --compartment-id "$COMPARTMENT_OCID" \
   --vcn-id "$VCN_OCID" \
   --lifecycle-state AVAILABLE \
   --query "data[?\"display-name\"==\`$natgw_name\`] | [0].id" --raw-output 2>/dev/null) || true
 
 if [ -z "$NATGW_OCID" ] || [ "$NATGW_OCID" = "null" ]; then
   NATGW_OCID=$(oci network nat-gateway create \
-    --compartment-id "$OCI_COMPARTMENT" \
+    --compartment-id "$COMPARTMENT_OCID" \
     --vcn-id "$VCN_OCID" \
     --display-name "$natgw_name" \
     --block-traffic "$NATGW_BLOCK_TRAFFIC" \

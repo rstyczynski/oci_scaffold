@@ -3,10 +3,10 @@
 #
 # Usage:
 #   NAME_PREFIX=test1 SECRET_VALUE=myvalue ./cycle-vault.sh
-#   OCI_COMPARTMENT=ocid1.compartment... NAME_PREFIX=test1 SECRET_VALUE=myvalue ./cycle-vault.sh
+#   COMPARTMENT_OCID=ocid1.compartment... NAME_PREFIX=test1 SECRET_VALUE=myvalue ./cycle-vault.sh
 #   KEY_DELETION_DAYS=7 VAULT_DELETION_DAYS=7 NAME_PREFIX=test1 SECRET_VALUE=myvalue ./cycle-vault.sh
 #
-# OCI_COMPARTMENT is optional; defaults to the tenancy OCID when omitted.
+# COMPARTMENT_OCID is optional; defaults to the tenancy OCID when omitted.
 # KEY_DELETION_DAYS / VAULT_DELETION_DAYS are optional env hints; this script
 # writes them into state as `.inputs.key_deletion_days` / `.inputs.vault_deletion_days`,
 # where teardown scripts clamp them to the allowed [7,30] day window (default 7).

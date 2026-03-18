@@ -14,12 +14,12 @@ set -euo pipefail
 # shellcheck source=do/oci_scaffold.sh
 source "$(dirname "$0")/../do/oci_scaffold.sh"
 
-OCI_COMPARTMENT=$(_state_get '.inputs.oci_compartment')
+COMPARTMENT_OCID=$(_state_get '.inputs.oci_compartment')
 NAME_PREFIX=$(_state_get '.inputs.name_prefix')
 VAULT_TYPE=$(_state_get '.inputs.vault_type')
 VAULT_TYPE="${VAULT_TYPE:-DEFAULT}"
 
-_require_env OCI_COMPARTMENT NAME_PREFIX
+_require_env COMPARTMENT_OCID NAME_PREFIX
 
 # If a previous teardown scheduled deletion, cancel it or start fresh.
 PREV_OCID=$(_state_get '.vault.ocid')
@@ -40,14 +40,14 @@ fi
 vault_name="${NAME_PREFIX}-vault"
 
 VAULT_OCID=$(oci kms management vault list \
-  --compartment-id "$OCI_COMPARTMENT" \
+  --compartment-id "$COMPARTMENT_OCID" \
   --all \
   --query "data[?\"display-name\"==\`$vault_name\` && \"lifecycle-state\"==\`ACTIVE\`].id | [0]" \
   --raw-output 2>/dev/null) || true
 
 if [ -z "$VAULT_OCID" ] || [ "$VAULT_OCID" = "null" ]; then
   VAULT_OCID=$(oci kms management vault create \
-    --compartment-id "$OCI_COMPARTMENT" \
+    --compartment-id "$COMPARTMENT_OCID" \
     --display-name "$vault_name" \
     --vault-type "$VAULT_TYPE" \
     --wait-for-state ACTIVE \

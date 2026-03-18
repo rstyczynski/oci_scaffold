@@ -4,10 +4,10 @@
 # Usage:
 #   NAME_PREFIX=test1 COMPARTMENT_PATH=/myapp ./cycle-compartment.sh
 #   NAME_PREFIX=test1 COMPARTMENT_PATH=/landing-zone/workloads/myapp ./cycle-compartment.sh
-#   OCI_COMPARTMENT=... NAME_PREFIX=test1 COMPARTMENT_PATH=/landing-zone/myapp ./cycle-compartment.sh
+#   COMPARTMENT_OCID=... NAME_PREFIX=test1 COMPARTMENT_PATH=/landing-zone/myapp ./cycle-compartment.sh
 #
 # All path segments are created if missing; pre-existing parents are left untouched.
-# OCI_COMPARTMENT is optional; defaults to tenancy OCID when omitted.
+# COMPARTMENT_OCID is optional; defaults to tenancy OCID when omitted.
 set -euo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
 export PATH="$DIR/do:$DIR/resource:$PATH"
@@ -17,7 +17,7 @@ export PATH="$DIR/do:$DIR/resource:$PATH"
 source "$DIR/do/oci_scaffold.sh"
 
 # ── seed inputs ────────────────────────────────────────────────────────────
-_state_set '.inputs.oci_compartment'   "$OCI_COMPARTMENT"
+_state_set '.inputs.oci_compartment'   "$COMPARTMENT_OCID"
 _state_set '.inputs.name_prefix'       "$NAME_PREFIX"
 _state_set '.inputs.compartment_path'  "$COMPARTMENT_PATH"
 

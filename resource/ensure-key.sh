@@ -16,7 +16,7 @@ set -euo pipefail
 # shellcheck source=do/oci_scaffold.sh
 source "$(dirname "$0")/../do/oci_scaffold.sh"
 
-OCI_COMPARTMENT=$(_state_get '.inputs.oci_compartment')
+COMPARTMENT_OCID=$(_state_get '.inputs.oci_compartment')
 NAME_PREFIX=$(_state_get '.inputs.name_prefix')
 VAULT_MGMT_ENDPOINT=$(_state_get '.vault.mgmt_endpoint')
 KEY_ALGORITHM=$(_state_get '.inputs.key_algorithm')
@@ -26,7 +26,7 @@ KEY_LENGTH="${KEY_LENGTH:-32}"
 KEY_PROTECTION_MODE=$(_state_get '.inputs.key_protection_mode')
 KEY_PROTECTION_MODE="${KEY_PROTECTION_MODE:-SOFTWARE}"
 
-_require_env OCI_COMPARTMENT NAME_PREFIX VAULT_MGMT_ENDPOINT
+_require_env COMPARTMENT_OCID NAME_PREFIX VAULT_MGMT_ENDPOINT
 
 # If a previous teardown scheduled deletion, cancel it or start fresh.
 PREV_OCID=$(_state_get '.key.ocid')
@@ -54,7 +54,7 @@ key_name="${NAME_PREFIX}-key"
 
 KEY_OCID=$(oci kms management key list \
   --endpoint "$VAULT_MGMT_ENDPOINT" \
-  --compartment-id "$OCI_COMPARTMENT" \
+  --compartment-id "$COMPARTMENT_OCID" \
   --all \
   --query "data[?\"display-name\"==\`$key_name\` && \"lifecycle-state\"==\`ENABLED\`].id | [0]" \
   --raw-output 2>/dev/null) || true
@@ -62,7 +62,7 @@ KEY_OCID=$(oci kms management key list \
 if [ -z "$KEY_OCID" ] || [ "$KEY_OCID" = "null" ]; then
   KEY_OCID=$(oci kms management key create \
     --endpoint "$VAULT_MGMT_ENDPOINT" \
-    --compartment-id "$OCI_COMPARTMENT" \
+    --compartment-id "$COMPARTMENT_OCID" \
     --display-name "$key_name" \
     --key-shape "{\"algorithm\":\"$KEY_ALGORITHM\",\"length\":$KEY_LENGTH}" \
     --protection-mode "$KEY_PROTECTION_MODE" \

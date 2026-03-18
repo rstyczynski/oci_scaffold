@@ -21,12 +21,12 @@ set -euo pipefail
 # shellcheck source=do/oci_scaffold.sh
 source "$(dirname "$0")/../do/oci_scaffold.sh"
 
-OCI_COMPARTMENT=$(_state_get '.inputs.oci_compartment')
+COMPARTMENT_OCID=$(_state_get '.inputs.oci_compartment')
 SUBNET_OCID=$(_state_get '.subnet.ocid')
 SUBNET_CIDR=$(_state_get '.subnet.cidr')
 OCI_REGION=$(_state_get '.inputs.oci_region')
 
-_require_env OCI_COMPARTMENT SUBNET_OCID SUBNET_CIDR OCI_REGION
+_require_env COMPARTMENT_OCID SUBNET_OCID SUBNET_CIDR OCI_REGION
 
 # Derive first usable IP from subnet CIDR (e.g. 10.0.0.0/24 → 10.0.0.1)
 IFS='.' read -r _o1 _o2 _o3 _o4 <<< "${SUBNET_CIDR%/*}"
@@ -87,7 +87,7 @@ _info "Path Analyzer: $PATH_LABEL (timeout ${PATH_TIMEOUT}s)..."
 
 pa_err=$(mktemp)
 wr_json=$(oci vn-monitoring path-analysis get-path-analysis-adhoc \
-  --compartment-id "$OCI_COMPARTMENT" \
+  --compartment-id "$COMPARTMENT_OCID" \
   --protocol "$proto_num" \
   --protocol-parameters "$proto_params" \
   --source-endpoint "{\"type\":\"SUBNET\",\"subnetId\":\"$SUBNET_OCID\",\"address\":\"$SUBNET_SRC_IP\"}" \
