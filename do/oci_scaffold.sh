@@ -7,12 +7,12 @@
 # State file location: defaults to ./state-{NAME_PREFIX}.json in current directory.
 # When NAME_PREFIX is set it always wins — prevents stale STATE_FILE exports from
 # a previous shell session bleeding into a new test run.
-# To use a custom path, set STATE_FILE explicitly AND leave NAME_PREFIX unset,
-# or export STATE_FILE after sourcing this library.
+# When NAME_PREFIX is unset, always defaults to ./state.json regardless of any
+# inherited STATE_FILE — prevents stale exports from previous sessions.
 if [ -n "${NAME_PREFIX:-}" ]; then
   STATE_FILE="${PWD}/state-${NAME_PREFIX}.json"
 else
-  STATE_FILE="${STATE_FILE:-${PWD}/state.json}"
+  STATE_FILE="${PWD}/state.json"
 fi
 export STATE_FILE
 
