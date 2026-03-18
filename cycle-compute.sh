@@ -57,4 +57,4 @@ _info "  SSH        : ssh opc@${COMPUTE_PRIVATE_IP:-<private-ip>}"
 print_summary
 
 # ── teardown ───────────────────────────────────────────────────────────────
-NAME_PREFIX=$NAME_PREFIX do/teardown.sh
+#NAME_PREFIX=$NAME_PREFIX do/teardown.sh
