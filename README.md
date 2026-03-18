@@ -267,8 +267,9 @@ These are set by the cycle scripts and shared by many ensure scripts:
 | Key | Default | Description |
 | --- | --- | --- |
 | `.inputs.bucket_name` | `{NAME_PREFIX}-bucket` | Object Storage bucket name (`ensure-bucket.sh`) |
+| `.inputs.bucket_ocid` | *(none)* | **Adopt existing bucket by OCID** — when set, `ensure-bucket.sh` skips name-based discovery and creation, resolves the bucket name from OCI, and sets `.bucket.created = false` so teardown does not delete it. Takes precedence over `.inputs.bucket_name`. |
 | `.inputs.oci_namespace` | discovered | Object Storage namespace (`ensure-bucket.sh`) |
-| `.inputs.bucket_<flag>` | *(none)* | **Pass-through** (`ensure-bucket.sh` only) — any `bucket_`-prefixed key is forwarded to `oci os bucket create` as `--<flag>` (underscores → hyphens). E.g. `.inputs.bucket_kms_key_id` → `--kms-key-id`, `.inputs.bucket_storage_tier` → `--storage-tier`. |
+| `.inputs.bucket_<flag>` | *(none)* | **Pass-through** (`ensure-bucket.sh` only) — any `bucket_`-prefixed key is forwarded to `oci os bucket create` as `--<flag>` (underscores → hyphens). Keys `name` and `ocid` are always skipped. E.g. `.inputs.bucket_kms_key_id` → `--kms-key-id`, `.inputs.bucket_storage_tier` → `--storage-tier`. |
 | `.inputs.log_group_name` | `{NAME_PREFIX}-logs` | Log Group name (`ensure-log_group.sh`) |
 | `.inputs.log_source_service` | `functions` or `objectstorage` | Service name for log source (`ensure-log.sh`, `cycle-log.sh`) |
 | `.inputs.log_source_resource` | — | Resource identifier to scope logs (e.g. bucket or Fn app) (`ensure-log.sh`, `cycle-log.sh`) |
@@ -321,7 +322,7 @@ resource/ensure-natgw.sh   # optional: internet access
 resource/ensure-rt.sh
 resource/ensure-subnet.sh
 
-# use the subnet OCID from the state file
+# use the subnet OCI ID from the state file
 jq -r '.subnet.ocid' "$STATE_FILE"
 
 do/teardown.sh "$NAME_PREFIX"
@@ -403,10 +404,155 @@ Adding support for a new optional OCI parameter requires no script changes — s
 
 Currently used by `ensure-bucket.sh`. Extend to other ensure scripts by following the same pattern.
 
+### Adopting an existing bucket by OCID
+
+A bucket created by one cycle can be adopted by another using its OCID. The adopting cycle records the bucket as not created (`.bucket.created = false`) so teardown does not delete it.
+
+**Step 1 — create the bucket in cycle A:**
+
+```bash
+export NAME_PREFIX=storage
+source do/oci_scaffold.sh
+
+_state_set '.inputs.oci_compartment' "$OCI_COMPARTMENT"
+_state_set '.inputs.name_prefix'     "$NAME_PREFIX"
+
+resource/ensure-bucket.sh
+
+# capture the OCID for use in cycle B
+BUCKET_OCID=$(_state_get '.bucket.ocid')
+```
+
+Output:
+
+```text
+  [INFO] STATE_FILE: /Users/rstyczynski/projects/oci_scaffold/state-storage.json
+  [DONE] Bucket created: storage-bucket
+```
+
+**Step 2 — adopt the bucket in cycle B:**
+
+```bash
+export NAME_PREFIX=myapp
+source do/oci_scaffold.sh
+
+# pass the OCID from cycle A — no compartment or name_prefix needed for this
+_state_set '.inputs.bucket_ocid' "$BUCKET_OCID"
+
+# resolves name from OCI, skips creation, sets .bucket.created = false
+resource/ensure-bucket.sh
+
+# bucket name and namespace are now available in cycle B's state
+BUCKET_NAME=$(_state_get '.bucket.name')
+NAMESPACE=$(_state_get '.bucket.namespace')
+```
+
+Output:
+
+```text
+  [INFO] STATE_FILE: /Users/rstyczynski/projects/oci_scaffold/state-myapp.json
+  [OK]   Using existing bucket 'storage-bucket'
+```
+
+When `do/teardown.sh` is called for cycle B, the bucket is left untouched. It is only deleted if cycle A's teardown runs.
+
+```bash
+do/teardown.sh
+```
+
+```text
+  [OK]   Bucket: nothing to delete
+  [INFO] State archived: /Users/rstyczynski/projects/oci_scaffold/state-myapp.deleted-20260318T091140.json
+```
+
+```bash
+export NAME_PREFIX=storage
+do/teardown.sh
+```
+
+```text
+  [INFO] STATE_FILE: /Users/rstyczynski/projects/oci_scaffold/state-storage.json
+  [DONE] Bucket deleted: storage-bucket
+  [INFO] State archived: /Users/rstyczynski/projects/oci_scaffold/state-storage.deleted-20260318T091151.json
+```
+
+### Creating and adopting an existing bucket by URI
+
+A bucket can be adopted using a URI of the form `/bucket_name` (tenancy root) or `/compartment/path/bucket_name`. The adopting cycle resolves the compartment OCID from the path (empty path = tenancy root), looks up the bucket by name, and records it as not created (`.bucket.created = false`) so teardown does not delete it.
+
+**Step 1 — create the bucket in cycle A:**
+
+```bash
+export NAME_PREFIX=storage
+source do/oci_scaffold.sh
+
+_state_set '.inputs.name_prefix'     "$NAME_PREFIX"
+
+resource/ensure-bucket.sh
+
+# capture the bucket name for reference
+BUCKET_NAME=$(_state_get '.bucket.name')
+```
+
+Output:
+
+```text
+  [INFO] STATE_FILE: /Users/rstyczynski/projects/oci_scaffold/state-storage.json
+  [DONE] Bucket created: storage-bucket
+```
+
+**Step 2 — adopt the bucket in cycle B by URI:**
+
+```bash
+export NAME_PREFIX=myapp
+source do/oci_scaffold.sh
+
+# URI encodes the full compartment path and bucket name — no OCID lookup needed
+_state_set '.inputs.bucket_uri' "/storage-bucket"
+
+# resolves compartment from path, looks up bucket by name, sets .bucket.created = false
+resource/ensure-bucket.sh
+
+# bucket name and namespace are now available in cycle B's state
+BUCKET_NAME=$(_state_get '.bucket.name')
+NAMESPACE=$(_state_get '.bucket.namespace')
+```
+
+Output:
+
+```text
+  [INFO] STATE_FILE: /Users/rstyczynski/projects/oci_scaffold/state-myapp.json
+  [OK]   Using existing bucket 'storage-bucket'
+```
+
+When `do/teardown.sh` is called for cycle B, the bucket is left untouched. It is only deleted if cycle A's teardown runs.
+
+```bash
+do/teardown.sh
+```
+
+```text
+  [OK]   Bucket: nothing to delete
+  [INFO] State archived: /Users/rstyczynski/projects/oci_scaffold/state-myapp.deleted-20260318T091140.json
+```
+
+```bash
+export NAME_PREFIX=storage
+do/teardown.sh
+```
+
+```text
+  [INFO] STATE_FILE: /Users/rstyczynski/projects/oci_scaffold/state-storage.json
+  [DONE] Bucket deleted: storage-bucket
+  [INFO] State archived: /Users/rstyczynski/projects/oci_scaffold/state-storage.deleted-20260318T091151.json
+```
+
 ## Backlog
 
-- **Apply self-polling to other resources** — currently only `teardown-compartment.sh` uses explicit work-request polling with live progress. Evaluate whether other long-running teardown operations (e.g. vault, log) benefit from the same treatment, or whether the silent `--wait-for-state` is sufficient for those resources.
-- **Apply `_state_extra_args` to all ensure scripts** — currently only `ensure-bucket.sh` uses dynamic CLI argument pass-through. Apply the same pattern to the remaining ensure scripts (`ensure-vcn.sh`, `ensure-subnet.sh`, `ensure-vault.sh`, `ensure-key.sh`, `ensure-secret.sh`, `ensure-fn_app.sh`, `ensure-log.sh`, etc.) so optional OCI CLI flags can be passed to any resource without script changes.
+- **Apply self-polling to other resources** — currently only `teardown-compartment.sh` uses explicit work-request polling with live progress. Evaluate whether other long-running teardown operations (e.g. vault, log) benefit from the same treatment, or whether the silent `--wait-for-state` is sufficient for those resources. ✅ Implemented for `teardown-compartment.sh`.
+- **Apply `_state_extra_args` to all ensure scripts** — currently only `ensure-bucket.sh` uses dynamic CLI argument pass-through. Apply the same pattern to the remaining ensure scripts (`ensure-vcn.sh`, `ensure-subnet.sh`, `ensure-vault.sh`, `ensure-key.sh`, `ensure-secret.sh`, `ensure-fn_app.sh`, `ensure-log.sh`, etc.) so optional OCI CLI flags can be passed to any resource without script changes. ✅ Implemented for `ensure-bucket.sh`.
+- **Adopt existing resource by OCID** — allow setting `.inputs.{resource}_ocid` in state before running `ensure-*.sh`. When an OCID is present, skip the name-based discovery query and use the provided OCID directly. Set `.created = false` so teardown does not delete the adopted resource. ✅ Implemented for `ensure-bucket.sh` (`.inputs.bucket_ocid`).
+- **Adopt existing resource by URI path** — allow setting `.inputs.{resource}_uri` in state as a compartment-path + resource name, e.g. `/comp1/comp2/resource_name`. The ensure script would resolve the compartment path to an OCID, query the resource by name within that compartment, and adopt it with `.created = false`. This decouples resource adoption from the `NAME_PREFIX` naming convention entirely. ✅ Implemented for `ensure-bucket.sh` (`.inputs.bucket_uri`).
 
 ## Dependencies
 
