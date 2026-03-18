@@ -15,10 +15,13 @@ do/
   oci_scaffold.sh      # Shared utilities, JSON state management, OCI discovery helpers
   teardown.sh          # Orchestrated teardown in reverse creation order
 resource/
-  ensure-*.sh          # Idempotent resource creation (network, vault, key, secret, logs, fn app, bucket, compartment, path analyzer)
+  ensure-*.sh          # Idempotent resource creation (network, compute, vault, key, secret, logs, fn app, bucket, compartment, path analyzer)
   teardown-*.sh        # Resource deletion scripts
+etc/
+  mitmproxy.yaml       # cloud-init: installs mitmproxy and starts it as a systemd service
 cycle-subnet.sh         # Full cycle: VCN + SGW (no internet)
 cycle-subnet-nat.sh     # Full cycle: VCN + SGW + NAT (with internet)
+cycle-compute.sh        # Full cycle: VCN + SGW + subnet + Compute instance
 cycle-vault.sh          # Full cycle: Vault + Key + Secret
 cycle-log.sh            # Full cycle: Bucket + Log Group + Log
 cycle-compartment.sh    # Full cycle: IAM compartment path creation
@@ -53,6 +56,9 @@ NAME_PREFIX=bkt ./cycle-bucket.sh
 
 # IAM compartment path cycle (creates all segments, tears them down)
 NAME_PREFIX=cmp COMPARTMENT_PATH=/landing-zone/workloads/myapp ./cycle-compartment.sh
+
+# Compute instance cycle (VCN + subnet + instance, SSH-ready via CloudShell)
+NAME_PREFIX=compute ./cycle-compute.sh
 ```
 
 ## Resource / cycle coverage
@@ -62,6 +68,7 @@ NAME_PREFIX=cmp COMPARTMENT_PATH=/landing-zone/workloads/myapp ./cycle-compartme
 | VCN, Security List, SGW, Route Table, Subnet | yes | `cycle-subnet.sh` |
 | NAT Gateway | yes | `cycle-subnet-nat.sh` |
 | Path Analyzer | yes | `cycle-subnet.sh`, `cycle-subnet-nat.sh` |
+| Compute Instance | yes | `cycle-compute.sh` |
 | Vault, KMS Key, Secret | yes | `cycle-vault.sh` |
 | Object Storage Bucket | yes | `cycle-log.sh`, `cycle-bucket.sh` |
 | Log Group, Log | yes | `cycle-log.sh` |
@@ -251,7 +258,25 @@ These are set by the cycle scripts and shared by many ensure scripts:
 | `.inputs.subnet_prohibit_public_ip` | `true` | Prohibit public IPs on VNICs (`ensure-subnet.sh`) |
 | `.inputs.sl_egress_cidr` | `0.0.0.0/0` | Security list egress CIDR (`ensure-sl.sh`) |
 | `.inputs.sl_egress_protocol` | `all` | Security list egress protocol (`ensure-sl.sh`) |
+| `.inputs.sl_ingress_cidr` | `.vcn.cidr` | Security list ingress CIDR (`ensure-sl.sh`) |
+| `.inputs.sl_ingress_protocol` | `6` (TCP) | Security list ingress protocol (`ensure-sl.sh`) |
 | `.inputs.natgw_block_traffic` | `false` | Whether NATGW should block all traffic (`ensure-natgw.sh`) |
+
+### Compute `.inputs.*` keys
+
+| Key | Default | Description |
+| --- | --- | --- |
+| `.inputs.compute_ocid` | *(none)* | **Adopt existing instance by OCID** — skips creation, sets `.compute.created = false` |
+| `.inputs.compute_uri` | *(none)* | **Adopt existing instance by URI** — `/instance_name` or `/compartment/path/instance_name`; falls through to creation if not found |
+| `.inputs.compute_name` | `{NAME_PREFIX}-instance` | Instance display name (`ensure-compute.sh`) |
+| `.inputs.compute_shape` | `VM.Standard.E4.Flex` | Instance shape (`ensure-compute.sh`) |
+| `.inputs.compute_ocpus` | `1` | OCPUs for flex shapes, composed into `--shape-config` (`ensure-compute.sh`) |
+| `.inputs.compute_memory_gb` | `4` | Memory in GB for flex shapes, composed into `--shape-config` (`ensure-compute.sh`) |
+| `.inputs.compute_image_id` | latest Oracle Linux 8 in region | Image OCID; auto-discovered when not set (`ensure-compute.sh`) |
+| `.inputs.compute_availability_domain` | first AD in region | Availability domain; auto-discovered when not set (`ensure-compute.sh`) |
+| `.inputs.compute_ssh_authorized_keys_file` | *(none)* | Path to SSH public key file forwarded as `--ssh-authorized-keys-file` |
+| `.inputs.compute_user_data_file` | *(none)* | Path to cloud-init script forwarded as `--user-data-file` (e.g. `etc/mitmproxy.yaml`) |
+| `.inputs.compute_<flag>` | *(none)* | **Pass-through** — any `compute_`-prefixed key is forwarded to `oci compute instance launch` as `--<flag>`. Keys `shape`, `ocpus`, `memory_gb`, `image_id`, `availability_domain`, `uri`, `name` are always skipped. |
 
 ### Vault / key / secret `.inputs.*` keys
 
