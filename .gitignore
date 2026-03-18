@@ -1,4 +1,4 @@
-state-*.json
+state*.json
 ignore/
 .DS_Store
 state.json
