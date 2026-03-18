@@ -17,8 +17,6 @@ export PATH="$DIR/do:$DIR/resource:$PATH"
 source "$DIR/do/oci_scaffold.sh"
 
 # ── seed inputs ────────────────────────────────────────────────────────────
-_state_set '.inputs.oci_compartment'   "$COMPARTMENT_OCID"
-_state_set '.inputs.name_prefix'       "$NAME_PREFIX"
 _state_set '.inputs.compartment_path'  "$COMPARTMENT_PATH"
 
 # ── setup ──────────────────────────────────────────────────────────────────
