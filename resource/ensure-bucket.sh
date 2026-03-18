@@ -51,9 +51,8 @@ if [ -n "$BUCKET_OCID" ]; then
   if [ -z "$BUCKET_NAME" ]; then
     _fail "Bucket not found: $BUCKET_OCID"
     exit 1
-  else
-    EXISTS=$BUCKET_NAME
   fi
+  EXISTS=$BUCKET_NAME
 fi
 
 #

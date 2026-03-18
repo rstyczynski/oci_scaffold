@@ -22,6 +22,7 @@ cycle-subnet-nat.sh     # Full cycle: VCN + SGW + NAT (with internet)
 cycle-vault.sh          # Full cycle: Vault + Key + Secret
 cycle-log.sh            # Full cycle: Bucket + Log Group + Log
 cycle-compartment.sh    # Full cycle: IAM compartment path creation
+cycle-bucket.sh         # Full cycle: all bucket modes (OCID, name, URI, extra args)
 ```
 
 ## Quick start
@@ -47,6 +48,9 @@ NAME_PREFIX=subnet_nat ./cycle-subnet-nat.sh
 # Bucket + Log Group + Log (objectstorage/write) cycle
 NAME_PREFIX=logs ./cycle-log.sh
 
+# Bucket adoption cycle (create, adopt by OCID / name / URI, extra args)
+NAME_PREFIX=bkt ./cycle-bucket.sh
+
 # IAM compartment path cycle (creates all segments, tears them down)
 NAME_PREFIX=cmp COMPARTMENT_PATH=/landing-zone/workloads/myapp ./cycle-compartment.sh
 ```
@@ -59,7 +63,7 @@ NAME_PREFIX=cmp COMPARTMENT_PATH=/landing-zone/workloads/myapp ./cycle-compartme
 | NAT Gateway | yes | `cycle-subnet-nat.sh` |
 | Path Analyzer | yes | `cycle-subnet.sh`, `cycle-subnet-nat.sh` |
 | Vault, KMS Key, Secret | yes | `cycle-vault.sh` |
-| Object Storage Bucket | yes | `cycle-log.sh` |
+| Object Storage Bucket | yes | `cycle-log.sh`, `cycle-bucket.sh` |
 | Log Group, Log | yes | `cycle-log.sh` |
 | IAM Compartment path | yes | `cycle-compartment.sh` |
 | Functions Application | yes | *(no dedicated cycle — combine with subnet test)* |
