@@ -164,6 +164,31 @@ _state_extra_args() {
      | [.key, (.value // "")] | @tsv' "$STATE_FILE")
 }
 
+# _state_get_file <key_prefix>
+# Resolves a file argument from state using b64 or file fallback.
+#
+# Looks up .inputs.<key_prefix>_b64 first; if set, base64-decodes it to a
+# temp file and prints the path.  Falls back to .inputs.<key_prefix>_file
+# when b64 is absent.  Prints nothing and returns 1 when neither is set.
+# The caller is responsible for cleaning up the temp file when done.
+_state_get_file() {
+  local _prefix="$1"
+  local _b64 _file _tmp
+  _b64=$(_state_get ".inputs.${_prefix}_b64")
+  if [ -n "$_b64" ] && [ "$_b64" != "null" ]; then
+    _tmp=$(mktemp /tmp/"${_prefix}"-XXXXXX)
+    echo "$_b64" | base64 -d > "$_tmp"
+    echo "$_tmp"
+    return 0
+  fi
+  _file=$(_state_get ".inputs.${_prefix}_file")
+  if [ -n "$_file" ] && [ "$_file" != "null" ]; then
+    echo "$_file"
+    return 0
+  fi
+  return 1
+}
+
 # ── OCI discovery helpers ──────────────────────────────────────────────────
 
 # _oci_tenancy_ocid
