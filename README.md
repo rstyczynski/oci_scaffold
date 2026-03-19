@@ -1,5 +1,9 @@
 # OCI Scaffold
 
+<p align="center">
+  <img src="doc/images/logo.png" alt="OCI Scaffold Logo" width="300">
+</p>
+
 Modular, idempotent framework for provisioning and tearing down Oracle Cloud Infrastructure (OCI) resources — primarily for integration testing of OCI Functions and related services.
 
 > **Scope:** Each `ensure-*.sh` script manages exactly **one** resource of its type per state file. This is by design — the scaffold is a thin, readable CLI wrapper for quickly assembling resource sets needed by integration tests, not a general-purpose infrastructure manager.
