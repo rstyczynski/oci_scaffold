@@ -64,6 +64,15 @@ print_summary() {
   [ "${failed}" -eq 0 ]
 }
 
+# _state_set_if_unowned PATH
+# Sets PATH=false only when not already true.
+# Use in name-based lookup paths so that a retry (resource exists because a
+# prior run created it) preserves created=true and teardown still deletes it.
+# Explicit adoption paths (OCID / URI inputs) always set false directly.
+_state_set_if_unowned() {
+  [ "$(_state_get "$1")" = "true" ] || _state_set "$1" false
+}
+
 # ── guard ──────────────────────────────────────────────────────────────────
 # _require_env VAR1 VAR2 ...
 # Exits with error if any bash variable is unset or empty.
@@ -101,7 +110,7 @@ _state_set() {
 _state_get() {
   local path="$1"
   [ -f "$STATE_FILE" ] || { echo ''; return 0; }
-  jq -r "$path // empty" "$STATE_FILE" 2>/dev/null
+  jq -r "$path | select(. != null)" "$STATE_FILE" 2>/dev/null
 }
 
 # _state_append '.some.array' '{"key":"val"}'  — appends a raw JSON object
