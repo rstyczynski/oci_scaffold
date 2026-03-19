@@ -173,16 +173,9 @@ if [ -z "$EXISTS" ]; then
     '{"ocpus":$ocpus,"memoryInGBs":$mem}')
 
   _extra_args=()
-  # user-data: .inputs.compute_user_data_b64 takes precedence over _file
-  _ud_b64=$(_state_get '.inputs.compute_user_data_b64')
-  _ud_file=$(_state_get '.inputs.compute_user_data_file')
-  if [ -n "$_ud_b64" ] && [ "$_ud_b64" != "null" ]; then
-    _tmp_ud=$(mktemp /tmp/compute-user-data-XXXXXX)
-    echo "$_ud_b64" | base64 -d > "$_tmp_ud"
-    _extra_args+=(--user-data-file "$_tmp_ud")
-  elif [ -n "$_ud_file" ] && [ "$_ud_file" != "null" ]; then
-    _extra_args+=(--user-data-file "$_ud_file")
-  fi
+  # user-data: compute_user_data_b64 takes precedence over compute_user_data_file
+  _ud_file=$(_state_get_file 'compute_user_data')
+  [ -n "$_ud_file" ] && _extra_args+=(--user-data-file "$_ud_file")
   _state_extra_args compute _extra_args shape ocpus memory_gb image_id availability_domain uri name user_data_file user_data_b64
 
   COMPUTE_OCID=$(oci compute instance launch \
