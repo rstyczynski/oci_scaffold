@@ -169,7 +169,8 @@ _state_extra_args() {
 #
 # Looks up .inputs.<key_prefix>_b64 first; if set, base64-decodes it to a
 # temp file and prints the path.  Falls back to .inputs.<key_prefix>_file
-# when b64 is absent.  Prints nothing and returns 1 when neither is set.
+# when b64 is absent.  Prints nothing (empty string) when neither is set.
+# Always returns 0 — safe to use under set -euo pipefail.
 # The caller is responsible for cleaning up the temp file when done.
 _state_get_file() {
   local _prefix="$1"
@@ -186,7 +187,7 @@ _state_get_file() {
     echo "$_file"
     return 0
   fi
-  return 1
+  return 0
 }
 
 # ── OCI discovery helpers ──────────────────────────────────────────────────
