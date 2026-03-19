@@ -51,7 +51,9 @@ if [ -z "$SL_OCID" ] || [ "$SL_OCID" = "null" ]; then
   ingress_rules=$(jq -n \
     --arg cidr "$SL_INGRESS_CIDR" \
     --arg proto "$SL_INGRESS_PROTOCOL" \
-    '[{"source":$cidr,"sourceType":"CIDR_BLOCK","protocol":$proto,"isStateless":false}]')
+    '[{"source":$cidr,"sourceType":"CIDR_BLOCK","protocol":$proto,"isStateless":false},
+      {"source":"0.0.0.0/0","sourceType":"CIDR_BLOCK","protocol":"1","isStateless":false,
+       "icmpOptions":{"type":3,"code":4}}]')
   SL_OCID=$(oci network security-list create \
     --compartment-id "$COMPARTMENT_OCID" \
     --vcn-id "$VCN_OCID" \
@@ -64,7 +66,7 @@ if [ -z "$SL_OCID" ] || [ "$SL_OCID" = "null" ]; then
   _state_set '.sl.created' true
 else
   _existing "Security List '$sl_name': $SL_OCID"
-  _state_set '.sl.created' false
+  _state_set_if_unowned '.sl.created'
 fi
 
 _state_append_once '.meta.creation_order' '"sl"'

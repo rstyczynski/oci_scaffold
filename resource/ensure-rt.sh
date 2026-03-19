@@ -7,7 +7,8 @@
 #   .vcn.ocid                 (required)
 #   .sgw.ocid                 (optional — adds OSN route when present)
 #   .sgw.osn_cidr             (required when .sgw.ocid is set)
-#   .natgw.ocid               (optional — adds 0.0.0.0/0 route when present)
+#   .natgw.ocid               (optional — adds 0.0.0.0/0 via NAT when present; mutually exclusive with igw)
+#   .igw.ocid                 (optional — adds 0.0.0.0/0 via IGW when present; mutually exclusive with natgw)
 #
 # Writes to state.json:
 #   .rt.ocid
@@ -22,6 +23,7 @@ VCN_OCID=$(_state_get '.vcn.ocid')
 SGW_OCID=$(_state_get '.sgw.ocid')
 OSN_CIDR=$(_state_get '.sgw.osn_cidr')
 NATGW_OCID=$(_state_get '.natgw.ocid')
+IGW_OCID=$(_state_get '.igw.ocid')
 
 _require_env COMPARTMENT_OCID NAME_PREFIX VCN_OCID
 
@@ -39,6 +41,10 @@ _build_route_rules() {
   if [ -n "$NATGW_OCID" ] && [ "$NATGW_OCID" != "null" ]; then
     rules=$(echo "$rules" | jq \
       --arg e "$NATGW_OCID" \
+      '. + [{"destination":"0.0.0.0/0","destinationType":"CIDR_BLOCK","networkEntityId":$e}]')
+  elif [ -n "$IGW_OCID" ] && [ "$IGW_OCID" != "null" ]; then
+    rules=$(echo "$rules" | jq \
+      --arg e "$IGW_OCID" \
       '. + [{"destination":"0.0.0.0/0","destinationType":"CIDR_BLOCK","networkEntityId":$e}]')
   fi
   echo "$rules"
@@ -64,7 +70,7 @@ if [ -z "$RT_OCID" ] || [ "$RT_OCID" = "null" ]; then
   _state_set '.rt.created' true
 else
   _existing "Route Table '$rt_name': $RT_OCID"
-  _state_set '.rt.created' false
+  _state_set_if_unowned '.rt.created'
 
   # Reconcile routes for pre-existing RT
   if [ -n "$SGW_OCID" ] && [ "$SGW_OCID" != "null" ]; then
@@ -88,6 +94,18 @@ else
       _done "NAT Gateway route (0.0.0.0/0) added to Route Table"
     else
       _existing "NAT Gateway route: present"
+    fi
+  fi
+
+  if [ -n "$IGW_OCID" ] && [ "$IGW_OCID" != "null" ]; then
+    igw_route_count=$(oci network route-table get --rt-id "$RT_OCID" --raw-output | \
+      jq --arg id "$IGW_OCID" \
+         '[.data."route-rules"[] | select(."network-entity-id" == $id)] | length')
+    if [ "${igw_route_count:-0}" -eq 0 ]; then
+      _add_route "$RT_OCID" "0.0.0.0/0" "CIDR_BLOCK" "$IGW_OCID"
+      _done "Internet Gateway route (0.0.0.0/0) added to Route Table"
+    else
+      _existing "Internet Gateway route: present"
     fi
   fi
 fi

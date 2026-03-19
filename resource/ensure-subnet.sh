@@ -51,11 +51,19 @@ if [ -z "$SUBNET_OCID" ] || [ "$SUBNET_OCID" = "null" ]; then
     --prohibit-public-ip-on-vnic "$SUBNET_PROHIBIT_PUBLIC_IP" \
     --wait-for-state AVAILABLE \
     --query 'data.id' --raw-output)
-  _done "Subnet created ($SUBNET_CIDR, private): $SUBNET_OCID"
+  subnet_type=$( [ "$SUBNET_PROHIBIT_PUBLIC_IP" = "false" ] && echo "public" || echo "private" )
+  _done "Subnet created ($SUBNET_CIDR, $subnet_type): $SUBNET_OCID"
   _state_set '.subnet.created' true
 else
+  # detect public/private mismatch — prohibit-public-ip-on-vnic is immutable after creation
+  actual_prohibit=$(oci network subnet get --subnet-id "$SUBNET_OCID" \
+    --query 'data."prohibit-public-ip-on-vnic"' --raw-output 2>/dev/null) || true
+  if [ -n "$actual_prohibit" ] && [ "$actual_prohibit" != "$SUBNET_PROHIBIT_PUBLIC_IP" ]; then
+    echo "  [ERROR] Subnet '$subnet_name' exists but prohibit-public-ip-on-vnic=$actual_prohibit (wanted $SUBNET_PROHIBIT_PUBLIC_IP). Teardown and re-run to recreate." >&2
+    exit 1
+  fi
   _existing "Subnet '$subnet_name': $SUBNET_OCID"
-  _state_set '.subnet.created' false
+  _state_set_if_unowned '.subnet.created'
 fi
 
 _state_append_once '.meta.creation_order' '"subnet"'

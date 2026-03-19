@@ -44,7 +44,7 @@ if [ -z "$VCN_OCID" ] || [ "$VCN_OCID" = "null" ]; then
   _state_set '.vcn.created' true
 else
   _existing "VCN '$vcn_name': $VCN_OCID"
-  _state_set '.vcn.created' false
+  _state_set_if_unowned '.vcn.created'
 fi
 
 _state_append_once '.meta.creation_order' '"vcn"'

@@ -2,3 +2,4 @@ state*.json
 ignore/
 .DS_Store
 state.json
+state-*-key*
