@@ -22,6 +22,7 @@ etc/
 cycle-subnet.sh         # Full cycle: VCN + SGW (no internet)
 cycle-subnet-nat.sh     # Full cycle: VCN + SGW + NAT (with internet)
 cycle-compute.sh        # Full cycle: VCN + SGW + subnet + Compute instance
+cycle-proxy.sh          # Full cycle: mitmproxy HTTPS inspection proxy (port 443)
 cycle-vault.sh          # Full cycle: Vault + Key + Secret
 cycle-log.sh            # Full cycle: Bucket + Log Group + Log
 cycle-compartment.sh    # Full cycle: IAM compartment path creation
@@ -55,10 +56,13 @@ NAME_PREFIX=logs ./cycle-log.sh
 NAME_PREFIX=bkt ./cycle-bucket.sh
 
 # IAM compartment path cycle (creates all segments, tears them down)
-NAME_PREFIX=cmp COMPARTMENT_PATH=/landing-zone/workloads/myapp ./cycle-compartment.sh
+NAME_PREFIX=cmp COMPARTMENT_PATH=/oci_scaffold/home ./cycle-compartment.sh
 
 # Compute instance cycle (VCN + subnet + instance, SSH-ready via CloudShell)
 NAME_PREFIX=compute ./cycle-compute.sh
+
+# mitmproxy HTTPS inspection proxy cycle
+NAME_PREFIX=proxy ./cycle-proxy.sh
 ```
 
 ## Resource / cycle coverage
@@ -68,7 +72,8 @@ NAME_PREFIX=compute ./cycle-compute.sh
 | VCN, Security List, SGW, Route Table, Subnet | yes | `cycle-subnet.sh` |
 | NAT Gateway | yes | `cycle-subnet-nat.sh` |
 | Path Analyzer | yes | `cycle-subnet.sh`, `cycle-subnet-nat.sh` |
-| Compute Instance | yes | `cycle-compute.sh` |
+| Compute Instance | yes | `cycle-compute.sh`, `cycle-proxy.sh` |
+| mitmproxy HTTPS proxy | — | `cycle-proxy.sh` |
 | Vault, KMS Key, Secret | yes | `cycle-vault.sh` |
 | Object Storage Bucket | yes | `cycle-log.sh`, `cycle-bucket.sh` |
 | Log Group, Log | yes | `cycle-log.sh` |
@@ -576,12 +581,62 @@ do/teardown.sh
   [INFO] State archived: /Users/rstyczynski/projects/oci_scaffold/state-storage.deleted-20260318T091151.json
 ```
 
+## mitmproxy HTTPS inspection proxy
+
+`cycle-proxy.sh` provisions a compute instance running [mitmproxy](https://mitmproxy.org/) as an HTTPS inspection proxy, verifies it works, and optionally tears it down.
+
+### How it works
+
+- Cloud-init (`etc/cloudinit/mitmproxy.yaml`) installs mitmproxy in a Python 3.8 venv and starts it as a systemd service on **port 443**.
+- A lightweight HTTP server (port 80) serves the mitmproxy CA certificate for client distribution.
+- **Port 80** serves the CA certificate over plain HTTP. DPI firewalls allow standard HTTP GET on port 80.
+- **Port 443** runs the proxy. DPI firewalls treat port 443 as opaque HTTPS and pass it through without inspection. Non-standard ports (8080, 3128, etc.) are blocked: the TCP handshake completes but the DPI silently drops the `HTTP CONNECT` payload after it, causing the client to time out. Port 443 bypasses this entirely.
+- `block_global: false` is written to `/var/lib/mitmproxy/config.yaml` so the proxy accepts connections from all IPs, not just loopback.
+
+### Usage
+
+```bash
+NAME_PREFIX=proxy ./cycle-proxy.sh
+```
+
+The script:
+
+1. Provisions the instance and waits for cloud-init to complete
+2. Downloads the CA cert to `/tmp/mitmproxy-ca-${NAME_PREFIX}.pem`
+3. Fetches a joke via the proxy as a live end-to-end test
+4. Prints proxy configuration instructions
+5. Asks whether to teardown (auto-yes after 15 seconds)
+
+### Using the proxy
+
+```bash
+# download CA cert
+curl http://<public-ip>/mitmproxy-ca-cert.pem -o /tmp/mitmproxy-ca.pem
+
+# use as HTTPS proxy
+export HTTPS_PROXY=http://<public-ip>:443
+export https_proxy=http://<public-ip>:443
+curl --cacert /tmp/mitmproxy-ca.pem https://cloud.oracle.com
+
+# remove proxy from CLI
+unset HTTPS_PROXY https_proxy HTTP_PROXY http_proxy
+```
+
+### Notes
+
+- mitmproxy 8.x requires Python 3.8+ — the cloud-init installs `python38` from OL8 AppStream.
+- `werkzeug<2.3` is pinned alongside mitmproxy because mitmproxy 8.x's onboarding app uses a Flask API removed in werkzeug 2.3.
+- The `ssl_insecure` option is intentionally omitted — with `ca-certificates` installed, Python's ssl module uses the OS trust store and verifies upstream certificates correctly.
+
 ## Backlog
+
+- **Retry-safe `created` flag (`_state_set_if_unowned`)** — when an ensure script finds a resource by name on retry (because a prior run created it and then failed), it must not overwrite `created=true` with `false`. Without this, teardown treats the resource as externally owned and skips deletion, leaving it orphaned. Fix: use `_state_set_if_unowned` in the name-based lookup path — it sets `created=false` only when the flag was never `true`. Explicit adoption paths (OCID / URI inputs) always set `false` directly. ✅ Implemented for `ensure-vcn.sh`, `ensure-sl.sh`, `ensure-igw.sh`, `ensure-rt.sh`, `ensure-subnet.sh`, `ensure-compute.sh`. ⬜ Remaining: `ensure-natgw.sh`, `ensure-sgw.sh`, `ensure-vault.sh`, `ensure-key.sh`, `ensure-secret.sh`, `ensure-bucket.sh`, `ensure-fn_app.sh`, `ensure-log.sh`, `ensure-log_group.sh`, `ensure-compartment.sh`.
 
 - **Apply self-polling to other resources** — currently only `teardown-compartment.sh` uses explicit work-request polling with live progress. Evaluate whether other long-running teardown operations (e.g. vault, log) benefit from the same treatment, or whether the silent `--wait-for-state` is sufficient for those resources. ✅ Implemented for `teardown-compartment.sh`.
 - **Apply `_state_extra_args` to all ensure scripts** — currently only `ensure-bucket.sh` uses dynamic CLI argument pass-through. Apply the same pattern to the remaining ensure scripts (`ensure-vcn.sh`, `ensure-subnet.sh`, `ensure-vault.sh`, `ensure-key.sh`, `ensure-secret.sh`, `ensure-fn_app.sh`, `ensure-log.sh`, etc.) so optional OCI CLI flags can be passed to any resource without script changes. ✅ Implemented for `ensure-bucket.sh`.
 - **Adopt existing resource by OCID** — allow setting `.inputs.{resource}_ocid` in state before running `ensure-*.sh`. When an OCID is present, skip the name-based discovery query and use the provided OCID directly. Set `.created = false` so teardown does not delete the adopted resource. ✅ Implemented for `ensure-bucket.sh` (`.inputs.bucket_ocid`).
 - **Adopt existing resource by URI path** — allow setting `.inputs.{resource}_uri` in state as a compartment-path + resource name, e.g. `/comp1/comp2/resource_name`. The ensure script would resolve the compartment path to an OCID, query the resource by name within that compartment, and adopt it with `.created = false`. This decouples resource adoption from the `NAME_PREFIX` naming convention entirely. ✅ Implemented for `ensure-bucket.sh` (`.inputs.bucket_uri`).
+- **Base64 file content in state (`.inputs.{resource}_file_b64`)** — instead of passing a local file path (`.inputs.{resource}_file`), allow supplying the file content as a base64-encoded string stored directly in the state. The ensure script checks for the `_b64` key first, decodes to a temp file, and falls back to the `_file` path when absent. This makes state files self-contained and removes the dependency on the caller's filesystem. ✅ Implemented for `ensure-compute.sh` (`.inputs.compute_user_data_b64` / `.inputs.compute_user_data_file`). ⬜ Remaining: other ensure scripts that accept file inputs.
 
 ## Dependencies
 

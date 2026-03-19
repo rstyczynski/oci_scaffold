@@ -39,6 +39,8 @@ EXISTS=""
 COMPUTE_OCID=""
 COMPUTE_NAME=""
 COMPARTMENT_OCID="${COMPARTMENT_OCID:-}"
+EXPLICIT_ADOPTION=false   # true for paths A/B (external ref); false for path C (name lookup)
+ADOPTION_METHOD=""        # ocid | uri | name
 
 #
 # Path A: adopt existing instance by OCID
@@ -56,6 +58,8 @@ if [ -n "$_input" ]; then
     --instance-id "$COMPUTE_OCID" \
     --query 'data."display-name"' --raw-output)
   EXISTS="$COMPUTE_OCID"
+  EXPLICIT_ADOPTION=true
+  ADOPTION_METHOD="ocid"
 fi
 
 #
@@ -77,11 +81,13 @@ if [ -z "$EXISTS" ] && [ -n "$COMPUTE_URI" ]; then
   COMPUTE_OCID=$(oci compute instance list \
     --compartment-id "$COMPARTMENT_OCID" \
     --display-name "$COMPUTE_NAME" \
-    --lifecycle-state RUNNING \
-    --query 'data[0].id' --raw-output 2>/dev/null) || true
+    2>/dev/null | jq -r \
+    '[.data[] | select(."lifecycle-state" | . != "TERMINATED" and . != "TERMINATING")] | .[0].id // empty') || true
   # not found — fall through to Path D for creation using URI-derived name and compartment
   if [ -n "$COMPUTE_OCID" ] && [ "$COMPUTE_OCID" != "null" ]; then
     EXISTS="$COMPUTE_OCID"
+    EXPLICIT_ADOPTION=true
+    ADOPTION_METHOD="uri"
   fi
 fi
 
@@ -114,10 +120,11 @@ if [ -z "$EXISTS" ]; then
   COMPUTE_OCID=$(oci compute instance list \
     --compartment-id "$COMPARTMENT_OCID" \
     --display-name "$COMPUTE_NAME" \
-    --lifecycle-state RUNNING \
-    --query 'data[0].id' --raw-output 2>/dev/null) || true
+    2>/dev/null | jq -r \
+    '[.data[] | select(."lifecycle-state" | . != "TERMINATED" and . != "TERMINATING")] | .[0].id // empty') || true
   if [ -n "$COMPUTE_OCID" ] && [ "$COMPUTE_OCID" != "null" ]; then
     EXISTS="$COMPUTE_OCID"
+    ADOPTION_METHOD="name"
   fi
 fi
 
@@ -133,6 +140,9 @@ if [ -z "$EXISTS" ]; then
   fi
 
   SUBNET_OCID=$(_state_get '.subnet.ocid')
+  SUBNET_PROHIBIT_PUBLIC_IP=$(_state_get '.inputs.subnet_prohibit_public_ip')
+  SUBNET_PROHIBIT_PUBLIC_IP="${SUBNET_PROHIBIT_PUBLIC_IP:-true}"
+  ASSIGN_PUBLIC_IP=$( [ "$SUBNET_PROHIBIT_PUBLIC_IP" = "false" ] && echo "true" || echo "false" )
   _require_env COMPARTMENT_OCID SUBNET_OCID
 
   COMPUTE_SHAPE=$(_state_get '.inputs.compute_shape');   COMPUTE_SHAPE="${COMPUTE_SHAPE:-VM.Standard.E4.Flex}"
@@ -163,7 +173,17 @@ if [ -z "$EXISTS" ]; then
     '{"ocpus":$ocpus,"memoryInGBs":$mem}')
 
   _extra_args=()
-  _state_extra_args compute _extra_args shape ocpus memory_gb image_id availability_domain uri name
+  # user-data: .inputs.compute_user_data_b64 takes precedence over _file
+  _ud_b64=$(_state_get '.inputs.compute_user_data_b64')
+  _ud_file=$(_state_get '.inputs.compute_user_data_file')
+  if [ -n "$_ud_b64" ] && [ "$_ud_b64" != "null" ]; then
+    _tmp_ud=$(mktemp /tmp/compute-user-data-XXXXXX)
+    echo "$_ud_b64" | base64 -d > "$_tmp_ud"
+    _extra_args+=(--user-data-file "$_tmp_ud")
+  elif [ -n "$_ud_file" ] && [ "$_ud_file" != "null" ]; then
+    _extra_args+=(--user-data-file "$_ud_file")
+  fi
+  _state_extra_args compute _extra_args shape ocpus memory_gb image_id availability_domain uri name user_data_file user_data_b64
 
   COMPUTE_OCID=$(oci compute instance launch \
     --compartment-id      "$COMPARTMENT_OCID" \
@@ -173,14 +193,33 @@ if [ -z "$EXISTS" ]; then
     --shape               "$COMPUTE_SHAPE" \
     --shape-config        "$shape_config" \
     --image-id            "$COMPUTE_IMAGE_ID" \
-    --wait-for-state      RUNNING \
+    --assign-public-ip    "$ASSIGN_PUBLIC_IP" \
     "${_extra_args[@]}" \
     --query 'data.id' --raw-output)
-  _done "Compute instance created ($COMPUTE_SHAPE, ${COMPUTE_OCPUS} OCPU, ${COMPUTE_MEMORY_GB} GB): $COMPUTE_OCID"
+  # write OCID and ownership before waiting — survives interruption
+  _state_set '.compute.ocid'    "$COMPUTE_OCID"
   _state_set '.compute.created' true
+  _elapsed=0
+  while true; do
+    _state=$(oci compute instance get \
+      --instance-id "$COMPUTE_OCID" \
+      --query 'data."lifecycle-state"' --raw-output 2>/dev/null) || true
+    printf "\033[2K\r  [WAIT] Compute instance provisioning … %ds (state: %s)" "$_elapsed" "$_state"
+    [ "$_state" = "RUNNING" ] && { echo; break; }
+    sleep 5; _elapsed=$((_elapsed + 5))
+  done
+  _done "Compute instance created ($COMPUTE_SHAPE, ${COMPUTE_OCPUS} OCPU, ${COMPUTE_MEMORY_GB} GB): $COMPUTE_OCID"
 else
-  _ok "Using existing compute instance '$COMPUTE_NAME'"
-  _state_set '.compute.created' false
+  case "$ADOPTION_METHOD" in
+    ocid) _ok      "Adopted compute instance by OCID: $COMPUTE_OCID" ;;
+    uri)  _ok      "Adopted compute instance by URI '$COMPUTE_URI': $COMPUTE_OCID" ;;
+    name) _existing "Compute instance '$COMPUTE_NAME' already exists: $COMPUTE_OCID" ;;
+  esac
+  if [ "$EXPLICIT_ADOPTION" = "true" ]; then
+    _state_set '.compute.created' false
+  else
+    _state_set_if_unowned '.compute.created'
+  fi
 fi
 
 #
@@ -201,5 +240,5 @@ COMPUTE_PRIVATE_IP=$(oci compute instance list-vnics \
 _state_append_once '.meta.creation_order' '"compute"'
 _state_set '.compute.ocid'       "$COMPUTE_OCID"
 _state_set '.compute.name'       "$COMPUTE_NAME"
-_state_set '.compute.public_ip'  "${COMPUTE_PUBLIC_IP:-}"
-_state_set '.compute.private_ip' "${COMPUTE_PRIVATE_IP:-}"
+[ -n "$COMPUTE_PUBLIC_IP" ]  && [ "$COMPUTE_PUBLIC_IP"  != "null" ] && _state_set '.compute.public_ip'  "$COMPUTE_PUBLIC_IP"
+[ -n "$COMPUTE_PRIVATE_IP" ] && [ "$COMPUTE_PRIVATE_IP" != "null" ] && _state_set '.compute.private_ip' "$COMPUTE_PRIVATE_IP"
