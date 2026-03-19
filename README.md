@@ -17,7 +17,7 @@ do/
 resource/
   ensure-*.sh          # Idempotent resource creation (network, compute, vault, key, secret, logs, fn app, bucket, compartment, path analyzer)
   teardown-*.sh        # Resource deletion scripts
-etc/
+etc/cloudinit/
   mitmproxy.yaml       # cloud-init: installs mitmproxy and starts it as a systemd service
 cycle-subnet.sh         # Full cycle: VCN + SGW (no internet)
 cycle-subnet-nat.sh     # Full cycle: VCN + SGW + NAT (with internet)
@@ -61,8 +61,14 @@ NAME_PREFIX=cmp COMPARTMENT_PATH=/oci_scaffold/home ./cycle-compartment.sh
 # Compute instance cycle (VCN + subnet + instance, SSH-ready via CloudShell)
 NAME_PREFIX=compute ./cycle-compute.sh
 
+# Compute instance cycle — all resources in /oci_scaffold (create compartment if missing)
+COMPARTMENT_PATH=/oci_scaffold NAME_PREFIX=compute ./cycle-compute.sh
+
 # mitmproxy HTTPS inspection proxy cycle
 NAME_PREFIX=proxy ./cycle-proxy.sh
+
+# mitmproxy proxy cycle — all resources in /oci_scaffold (create compartment if missing)
+COMPARTMENT_PATH=/oci_scaffold NAME_PREFIX=proxy ./cycle-proxy.sh
 ```
 
 ## Resource / cycle coverage
@@ -119,19 +125,6 @@ jq . state-logs.json
 ```
 
 Then clean up manually using the individual teardown scripts or re-run the test (idempotent — existing resources are detected and reused).
-
-### Cleaning up after a failed run
-
-When a cycle fails mid-way, teardown is skipped and the state file is left in place. Resources that were detected as pre-existing have `created: false` and are normally skipped by teardown. Use `FORCE_DELETE=true` to delete everything in state regardless of the `created` flag:
-
-```bash
-# State file still present
-FORCE_DELETE=true NAME_PREFIX=subnet_nat do/teardown.sh
-
-# State file already archived (teardown ran but resources remain)
-STATE_FILE=state-subnet_nat.deleted-20260313T220309.json \
-  FORCE_DELETE=true do/teardown.sh
-```
 
 ## Compartment teardown
 
@@ -241,6 +234,7 @@ Summary counters (`created`, `existing`, `tested`, `failed`) are reset at the st
 | --- | --- | --- |
 | `NAME_PREFIX` | **required** | Prefix for all created resource names (also used in default state file name) |
 | `COMPARTMENT_OCID` | tenancy OCID | Target compartment; auto-discovered from tenancy when omitted |
+| `COMPARTMENT_PATH` | *(none)* | IAM compartment path (e.g. `/oci_scaffold`); when set, `cycle-compute.sh` and `cycle-proxy.sh` resolve or create the compartment via `ensure-compartment.sh` and override `COMPARTMENT_OCID` |
 | `OCI_REGION` | home region | Region identifier (e.g. `eu-zurich-1`); auto-discovered from home region when omitted |
 | `STATE_FILE` | `./state-{NAME_PREFIX}.json` | JSON state file path; set before sourcing `do/oci_scaffold.sh` |
 
@@ -280,7 +274,8 @@ These are set by the cycle scripts and shared by many ensure scripts:
 | `.inputs.compute_image_id` | latest Oracle Linux 8 in region | Image OCID; auto-discovered when not set (`ensure-compute.sh`) |
 | `.inputs.compute_availability_domain` | first AD in region | Availability domain; auto-discovered when not set (`ensure-compute.sh`) |
 | `.inputs.compute_ssh_authorized_keys_file` | *(none)* | Path to SSH public key file forwarded as `--ssh-authorized-keys-file` |
-| `.inputs.compute_user_data_file` | *(none)* | Path to cloud-init script forwarded as `--user-data-file` (e.g. `etc/mitmproxy.yaml`) |
+| `.inputs.compute_user_data_file` | *(none)* | Path to cloud-init script forwarded as `--user-data-file` (e.g. `etc/cloudinit/mitmproxy.yaml`) |
+| `.inputs.compute_user_data_b64` | *(none)* | Base64-encoded cloud-init content; decoded to a temp file and forwarded as `--user-data-file`; takes precedence over `compute_user_data_file` |
 | `.inputs.compute_<flag>` | *(none)* | **Pass-through** — any `compute_`-prefixed key is forwarded to `oci compute instance launch` as `--<flag>`. Keys `shape`, `ocpus`, `memory_gb`, `image_id`, `availability_domain`, `uri`, `name` are always skipped. |
 
 ### Vault / key / secret `.inputs.*` keys
@@ -359,7 +354,7 @@ resource/ensure-subnet.sh
 # use the subnet OCI ID from the state file
 jq -r '.subnet.ocid' "$STATE_FILE"
 
-do/teardown.sh "$NAME_PREFIX"
+NAME_PREFIX=$NAME_PREFIX do/teardown.sh
 ```
 
 ## Parallel runs
@@ -581,6 +576,43 @@ do/teardown.sh
   [INFO] State archived: /Users/rstyczynski/projects/oci_scaffold/state-storage.deleted-20260318T091151.json
 ```
 
+### Base64 file content in state (`_state_get_file`)
+
+Some OCI CLI commands accept file arguments (e.g. `--user-data-file` for compute). Rather than requiring a file on the caller's filesystem, the scaffold provides a generic helper `_state_get_file` that resolves a file path from state — decoding base64 content to a temp file when available, or returning a plain file path as a fallback.
+
+**Function signature:**
+
+```bash
+_state_get_file <key_prefix>
+```
+
+Looks up `.inputs.<key_prefix>_b64` first. If set, base64-decodes it to a temp file and prints the path. Falls back to `.inputs.<key_prefix>_file` when b64 is absent. Prints nothing when neither is set. Always returns 0 — safe under `set -euo pipefail`.
+
+**Usage in ensure scripts:**
+
+```bash
+_ud_file=$(_state_get_file 'compute_user_data')
+[ -n "$_ud_file" ] && _extra_args+=(--user-data-file "$_ud_file")
+```
+
+**Example — cloud-init with port substitution in `cycle-proxy.sh`:**
+
+```bash
+# render template, substitute placeholders, encode to b64
+_user_data_b64=$(sed \
+  -e "s/@@PROXY_PORT@@/${PROXY_PORT}/g" \
+  -e "s/@@CA_PORT@@/${CA_PORT}/g" \
+  "$DIR/etc/cloudinit/mitmproxy.yaml" | base64 | tr -d '\n')
+
+_state_set '.inputs.compute_user_data_b64' "$_user_data_b64"
+```
+
+`ensure-compute.sh` calls `_state_get_file 'compute_user_data'` — the b64 key is found, decoded to a temp file, and its path forwarded to `oci compute instance launch --user-data-file`.
+
+This keeps the state file self-contained — no dependency on the caller's filesystem layout — and allows in-memory content transforms (port substitution, templating) before the file is passed to OCI.
+
+Currently applied in `ensure-compute.sh` (`.inputs.compute_user_data_b64` / `.inputs.compute_user_data_file`).
+
 ## mitmproxy HTTPS inspection proxy
 
 `cycle-proxy.sh` provisions a compute instance running [mitmproxy](https://mitmproxy.org/) as an HTTPS inspection proxy, verifies it works, and optionally tears it down.
@@ -611,7 +643,7 @@ The script:
 
 ```bash
 # download CA cert
-curl http://<public-ip>/mitmproxy-ca-cert.pem -o /tmp/mitmproxy-ca.pem
+curl http://<public-ip>:80/mitmproxy-ca-cert.pem -o /tmp/mitmproxy-ca.pem
 
 # use as HTTPS proxy
 export HTTPS_PROXY=http://<public-ip>:443

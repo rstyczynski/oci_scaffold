@@ -5,6 +5,7 @@
 #   NAME_PREFIX=test1 ./cycle-proxy.sh
 #   OCI_REGION=eu-zurich-1 NAME_PREFIX=test1 ./cycle-proxy.sh
 #   COMPARTMENT_OCID=... OCI_REGION=... NAME_PREFIX=test1 ./cycle-proxy.sh
+#   COMPARTMENT_PATH=/oci_scaffold NAME_PREFIX=test1 ./cycle-proxy.sh
 #   PROXY_PORT=443 CA_PORT=80 NAME_PREFIX=test1 ./cycle-proxy.sh
 #
 # Note: PROXY_PORT and CA_PORT must match the ports configured in the cloud-init
@@ -18,6 +19,11 @@ export PATH="$DIR/do:$DIR/resource:$PATH"
 PROXY_PORT="${PROXY_PORT:-443}"
 CA_PORT="${CA_PORT:-80}"
 source "$DIR/do/oci_scaffold.sh"
+
+# ── compartment: ensure /oci_scaffold exists ──────────────────────────────
+_state_set '.inputs.compartment_path' '/oci_scaffold'
+ensure-compartment.sh
+COMPARTMENT_OCID=$(_state_get '.compartment.ocid')
 
 # ── render cloud-init with port substitution → base64 ─────────────────────
 _user_data_b64=$(sed \
@@ -57,7 +63,7 @@ ensure-compute.sh
 
 # ── wait for SSH ───────────────────────────────────────────────────────────
 COMPUTE_PUBLIC_IP=$(_state_get '.compute.public_ip')
-ssh-keygen -R "$COMPUTE_PUBLIC_IP" 2>/dev/null || true
+ssh-keygen -R "$COMPUTE_PUBLIC_IP" >/dev/null 2>&1 || true
 if [ -n "$COMPUTE_PUBLIC_IP" ] && [ "$COMPUTE_PUBLIC_IP" != "null" ]; then
   _elapsed=0
   while true; do
