@@ -1,7 +1,8 @@
 #cloud-config
 packages:
-  - python3-pip
-  - python3-venv
+  - python38
+  - python38-pip
+  - ca-certificates
 
 write_files:
   - path: /etc/systemd/system/mitmproxy.service
@@ -12,19 +13,59 @@ write_files:
       After=network.target
 
       [Service]
-      ExecStart=/opt/mitmproxy/bin/mitmdump
+      ExecStart=/opt/mitmproxy/bin/mitmdump --set confdir=/var/lib/mitmproxy --listen-port @@PROXY_PORT@@
       Restart=on-failure
-      User=nobody
-      Group=nobody
+      User=mitmproxy
+      Group=mitmproxy
+      AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+      [Install]
+      WantedBy=multi-user.target
+
+  - path: /usr/local/bin/mitmproxy-ca-server
+    permissions: '0755'
+    content: |
+      #!/usr/bin/env python3
+      import os
+      from http.server import SimpleHTTPRequestHandler
+      from socketserver import ThreadingMixIn, TCPServer
+      class ThreadingHTTPServer(ThreadingMixIn, TCPServer):
+          allow_reuse_address = True
+      os.chdir('/var/lib/mitmproxy')
+      with ThreadingHTTPServer(('', @@CA_PORT@@), SimpleHTTPRequestHandler) as httpd:
+          httpd.serve_forever()
+
+  - path: /etc/systemd/system/mitmproxy-ca.service
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=mitmproxy CA cert HTTP server (port @@CA_PORT@@)
+      After=mitmproxy.service
+
+      [Service]
+      ExecStart=/usr/bin/python3 /usr/local/bin/mitmproxy-ca-server
+      Restart=on-failure
+      User=mitmproxy
+      Group=mitmproxy
+      AmbientCapabilities=CAP_NET_BIND_SERVICE
 
       [Install]
       WantedBy=multi-user.target
 
 runcmd:
-  - python3 -m venv /opt/mitmproxy
-  - /opt/mitmproxy/bin/pip install --quiet mitmproxy
+  - useradd --system --no-create-home --shell /sbin/nologin mitmproxy
+  - mkdir -p /var/lib/mitmproxy
+  - chown mitmproxy:mitmproxy /var/lib/mitmproxy
+  - "echo 'block_global: false' > /var/lib/mitmproxy/config.yaml"
+  - chown mitmproxy:mitmproxy /var/lib/mitmproxy/config.yaml
+  - python3.8 -m venv /opt/mitmproxy
+  - /opt/mitmproxy/bin/pip install --quiet 'mitmproxy' 'werkzeug<2.3'
   - ln -sf /opt/mitmproxy/bin/mitmproxy /usr/local/bin/mitmproxy
   - ln -sf /opt/mitmproxy/bin/mitmdump  /usr/local/bin/mitmdump
   - ln -sf /opt/mitmproxy/bin/mitmweb   /usr/local/bin/mitmweb
+  - firewall-offline-cmd --add-port=@@CA_PORT@@/tcp
+  - firewall-offline-cmd --add-port=@@PROXY_PORT@@/tcp
   - systemctl daemon-reload
   - systemctl enable --now mitmproxy
+  - systemctl enable --now mitmproxy-ca
+  - systemctl restart firewalld
