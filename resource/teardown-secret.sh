@@ -15,8 +15,11 @@ source "$(dirname "$0")/../do/oci_scaffold.sh"
 SECRET_OCID=$(_state_get '.secret.ocid')
 SECRET_CREATED=$(_state_get '.secret.created')
 DELETION_SCHEDULED=$(_state_get '.secret.deletion_scheduled')
+SECRET_DELETED=$(_state_get '.secret.deleted')
 
-if [ "$DELETION_SCHEDULED" = "true" ]; then
+if [ "$SECRET_DELETED" = "true" ]; then
+  _info "Secret: already deleted — skipping"
+elif [ "$DELETION_SCHEDULED" = "true" ]; then
   LIFECYCLE=$(oci vault secret get --secret-id "$SECRET_OCID" \
     --query 'data."lifecycle-state"' --raw-output 2>/dev/null) || LIFECYCLE="DELETED"
   if [ "$LIFECYCLE" = "DELETED" ]; then

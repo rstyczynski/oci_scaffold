@@ -26,8 +26,11 @@ source "$(dirname "$0")/../do/oci_scaffold.sh"
 VAULT_OCID=$(_state_get '.vault.ocid')
 VAULT_CREATED=$(_state_get '.vault.created')
 DELETION_SCHEDULED=$(_state_get '.vault.deletion_scheduled')
+VAULT_DELETED=$(_state_get '.vault.deleted')
 
-if [ "$DELETION_SCHEDULED" = "true" ]; then
+if [ "$VAULT_DELETED" = "true" ]; then
+  _info "Vault: already deleted — skipping"
+elif [ "$DELETION_SCHEDULED" = "true" ]; then
   LIFECYCLE=$(oci kms management vault get --vault-id "$VAULT_OCID" \
     --query 'data."lifecycle-state"' --raw-output 2>/dev/null) || LIFECYCLE="DELETED"
   if [ "$LIFECYCLE" = "DELETED" ]; then

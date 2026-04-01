@@ -30,8 +30,11 @@ KEY_OCID=$(_state_get '.key.ocid')
 KEY_CREATED=$(_state_get '.key.created')
 VAULT_MGMT_ENDPOINT=$(_state_get '.vault.mgmt_endpoint')
 DELETION_SCHEDULED=$(_state_get '.key.deletion_scheduled')
+KEY_DELETED=$(_state_get '.key.deleted')
 
-if [ "$DELETION_SCHEDULED" = "true" ]; then
+if [ "$KEY_DELETED" = "true" ]; then
+  _info "KMS Key: already deleted — skipping"
+elif [ "$DELETION_SCHEDULED" = "true" ]; then
   LIFECYCLE=$(oci kms management key get --key-id "$KEY_OCID" \
     --endpoint "$VAULT_MGMT_ENDPOINT" \
     --query 'data."lifecycle-state"' --raw-output 2>/dev/null) || LIFECYCLE="DELETED"
