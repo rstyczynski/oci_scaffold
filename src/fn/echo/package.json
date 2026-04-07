@@ -1,0 +1,13 @@
+{
+  "name": "oci-echo",
+  "version": "0.0.1",
+  "private": true,
+  "description": "OCI Functions echo function (Fn Project / Node)",
+  "main": "func.js",
+  "scripts": {
+    "start": "node func.js"
+  },
+  "dependencies": {
+    "@fnproject/fdk": "^0.0.21"
+  }
+}

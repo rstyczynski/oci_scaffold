@@ -49,7 +49,7 @@ if [ -z "$FN_APP_OCID" ] || [ "$FN_APP_OCID" = "null" ]; then
   _state_set '.fn_app.created' true
 else
   _existing "Fn Application '$FN_APP_NAME': $FN_APP_OCID"
-  _state_set '.fn_app.created' false
+  _state_set_if_unowned '.fn_app.created'
 fi
 
 _state_append_once '.meta.creation_order' '"fn_app"'

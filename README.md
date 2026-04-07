@@ -19,10 +19,11 @@ do/
   oci_scaffold.sh      # Shared utilities, JSON state management, OCI discovery helpers
   teardown.sh          # Orchestrated teardown in reverse creation order
 resource/
-  ensure-*.sh          # Idempotent resource creation (network, compute, vault, key, secret, logs, fn app, bucket, compartment, path analyzer)
+  ensure-*.sh          # Idempotent resource creation (network, compute, vault, key, secret, logs, fn app, fn function, API GW, bucket, compartment, path analyzer)
   teardown-*.sh        # Resource deletion scripts
 etc/cloudinit/
   mitmproxy.yaml       # cloud-init: installs mitmproxy and starts it as a systemd service
+src/fn/echo/            # Example Node.js Fn Project function (echo)
 cycle-subnet.sh         # Full cycle: VCN + SGW (no internet)
 cycle-subnet-nat.sh     # Full cycle: VCN + SGW + NAT (with internet)
 cycle-compute.sh        # Full cycle: VCN + SGW + subnet + Compute instance
@@ -31,6 +32,8 @@ cycle-vault.sh          # Full cycle: Vault + Key + Secret
 cycle-log.sh            # Full cycle: Bucket + Log Group + Log
 cycle-compartment.sh    # Full cycle: IAM compartment path creation
 cycle-bucket.sh         # Full cycle: all bucket modes (OCID, name, URI, extra args)
+cycle-function.sh       # Full cycle: Fn app + deploy echo function + direct invoke test
+cycle-apigw.sh          # Full cycle: Fn app + function + API GW + Internet test
 ```
 
 ## Quick start
@@ -73,6 +76,24 @@ NAME_PREFIX=proxy ./cycle-proxy.sh
 
 # mitmproxy proxy cycle — all resources in /oci_scaffold (create compartment if missing)
 COMPARTMENT_PATH=/oci_scaffold NAME_PREFIX=proxy ./cycle-proxy.sh
+
+# Fn function cycle (deploy src/fn/echo and test via direct invoke)
+NAME_PREFIX=fn ./cycle-function.sh
+
+# API GW cycle (deploy src/fn/echo and test via public API GW endpoint)
+NAME_PREFIX=gw ./cycle-apigw.sh
+
+# Customize API GW paths/methods (example)
+NAME_PREFIX=gw \
+  APIGW_PATH_PREFIX=/marketing \
+  APIGW_ROUTE_PATH=/hello \
+  APIGW_METHODS=POST \
+  ./cycle-apigw.sh
+
+# Note: cycles default COMPARTMENT_OCID to the current `fn` context compartment.
+# If you want a different compartment, explicitly set COMPARTMENT_OCID=...
+# To force keeping an already-exported COMPARTMENT_OCID (and ignore `fn` context), set:
+#   RESPECT_COMPARTMENT_OCID=true
 ```
 
 ## Resource / cycle coverage
@@ -88,7 +109,9 @@ COMPARTMENT_PATH=/oci_scaffold NAME_PREFIX=proxy ./cycle-proxy.sh
 | Object Storage Bucket | yes | `cycle-log.sh`, `cycle-bucket.sh` |
 | Log Group, Log | yes | `cycle-log.sh` |
 | IAM Compartment path | yes | `cycle-compartment.sh` |
-| Functions Application | yes | *(no dedicated cycle — combine with subnet test)* |
+| Functions Application | yes | `cycle-function.sh`, `cycle-apigw.sh` |
+| Functions Function (`fnfunc`) | yes | `cycle-function.sh`, `cycle-apigw.sh` |
+| API Gateway (ApiGw + Deployment) | yes | `cycle-apigw.sh` |
 
 ## Failure handling
 

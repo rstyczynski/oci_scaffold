@@ -1,0 +1,9 @@
+schema_version: 20180708
+name: echo
+version: 0.0.24
+runtime: node
+build_image: fnproject/node:20-dev
+run_image: fnproject/node:20
+entrypoint: node func.js
+memory: 256
+timeout: 30
