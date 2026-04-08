@@ -117,7 +117,7 @@ NAME_PREFIX=gw \
 | Object Storage Bucket | yes | `cycle-log.sh`, `cycle-bucket.sh` |
 | Log Group, Log | yes | `cycle-log.sh` |
 | IAM Compartment path | yes | `cycle-compartment.sh` |
-| IAM User, Group, Policy | yes | `cycle-iam_access.sh` |
+| IAM User, Group, user-in-group, Policy | yes | `cycle-iam_access.sh` |
 | Functions Application | yes | `cycle-function.sh`, `cycle-apigw.sh` |
 | Functions Function (`fnfunc`) | yes | `cycle-function.sh`, `cycle-apigw.sh` |
 | API Gateway (ApiGw + Deployment) | yes | `cycle-apigw.sh` |

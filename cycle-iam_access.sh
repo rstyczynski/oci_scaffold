@@ -52,21 +52,23 @@ if [ -n "${IAM_POLICY_NAME:-}" ]; then
   _state_set '.inputs.iam_policy_name' "$IAM_POLICY_NAME"
 fi
 
-# ── setup (user + group + policy) ───────────────────────────────────────────
+# ── setup (user + group + membership + policy) ───────────────────────────────
 ensure-iam_user.sh
 ensure-iam_group.sh
+ensure-iam_user_in_group.sh
 ensure-iam_policy.sh
 
-# Teardown must delete policy before group (policy references group). Upgraded state
-# files may have appended iam_group after iam_policy; normalize order.
+# Teardown order: policy → remove user from group → delete group → delete user.
+# Upgraded state files may list IAM steps out of order; normalize.
 _tmp=$(jq '
   .meta.creation_order as $o
   | if $o == null then . else
-      ($o | map(select(. != "iam_user" and . != "iam_group" and . != "iam_policy"))) as $rest
+      ($o | map(select(. != "iam_user" and . != "iam_group" and . != "iam_user_in_group" and . != "iam_policy"))) as $rest
       | ($o | map(select(. == "iam_user"))) as $u
       | ($o | map(select(. == "iam_group"))) as $g
+      | ($o | map(select(. == "iam_user_in_group"))) as $uig
       | ($o | map(select(. == "iam_policy"))) as $p
-      | .meta.creation_order = ($rest + $u + $g + $p)
+      | .meta.creation_order = ($rest + $u + $g + $uig + $p)
     end
 ' "$STATE_FILE")
 echo "$_tmp" > "$STATE_FILE"
@@ -226,13 +228,20 @@ _oci_as_iam_user() {
   )
 }
 
-# New API keys can take time to become signable (IDCS / IAM propagation).
-_info "Waiting for API key propagation (15s) ..."
-sleep 15
+# New API keys can take time to become signable (IAM accepting the public key).
+_prop_secs=15
+_prop_elapsed=0
+while [ "$_prop_elapsed" -lt "$_prop_secs" ]; do
+  printf "\033[2K\r  [WAIT] API key propagation (IAM) … %ss / %ss" "$_prop_elapsed" "$_prop_secs"
+  sleep 1
+  _prop_elapsed=$((_prop_elapsed + 1))
+done
+echo ""
 
 # Smoke test: proves config + key signing work before bucket ACLs matter.
-_info "Verifying API key auth (os ns get as test user) ..."
+_info "Verifying API key (os ns get as test user) …"
 _ns_ec=1
+_ns_elapsed=0
 _saved_trap=$(trap -p ERR || true)
 trap - ERR
 for _ns_try in {1..36}; do
@@ -243,9 +252,19 @@ for _ns_try in {1..36}; do
   if [ "$_ns_ec" -eq 0 ]; then
     break
   fi
-  sleep 10
+  if [ "$_ns_try" -ge 36 ]; then
+    break
+  fi
+  _r=10
+  while [ "$_r" -gt 0 ]; do
+    printf "\033[2K\r  [WAIT] os ns get … attempt %s/36 failed, retry in %ss (elapsed %ss)" "$_ns_try" "$_r" "$_ns_elapsed"
+    sleep 1
+    _r=$((_r - 1))
+    _ns_elapsed=$((_ns_elapsed + 1))
+  done
 done
 eval "${_saved_trap:-trap - ERR}"
+echo ""
 if [ "$_ns_ec" -ne 0 ]; then
   echo "  [ERROR] API key authentication still failing after propagation wait (os ns get)." >&2
   echo "  [ERROR] Tips: confirm this user can use API keys (Identity Console); try a new NAME_PREFIX user;" >&2
@@ -265,7 +284,13 @@ _bucket_suffix="$(date +%s)-${RANDOM}"
 bucket="${NAME_PREFIX}-iam-bkt-${_bucket_suffix}"
 _info "Testing IAM user access by creating bucket: $bucket"
 
-sleep 5
+_pre_bucket=5
+while [ "$_pre_bucket" -gt 0 ]; do
+  printf "\033[2K\r  [WAIT] before bucket create test … %ss" "$_pre_bucket"
+  sleep 1
+  _pre_bucket=$((_pre_bucket - 1))
+done
+echo ""
 
 _created=false
 _elapsed=0
@@ -319,7 +344,13 @@ while true; do
     break
   fi
 
-  sleep 5
+  _r=5
+  while [ "$_r" -gt 0 ]; do
+    printf "\033[2K\r  [WAIT] bucket create … next attempt in %ss (elapsed %ss / %ss max)" "$_r" "$_elapsed" "$_max_wait"
+    sleep 1
+    _r=$((_r - 1))
+  done
+  echo ""
   _elapsed=$((_elapsed + 5))
 done
 

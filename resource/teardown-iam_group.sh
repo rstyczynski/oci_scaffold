@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# teardown-iam_group.sh — remove user from group and delete group if created by ensure
+# teardown-iam_group.sh — delete IAM group if created by ensure (membership: teardown-iam_user_in_group.sh)
 #
 # Reads from state.json:
 #   .iam_group.ocid
 #   .iam_group.created
-#   .iam_user.ocid
+#   .iam_user.ocid   (optional; if set, best-effort remove-user before delete so the group is empty)
 #
 # Optional:
 #   FORCE_DELETE=true
@@ -28,6 +28,7 @@ if [ -z "$GROUP_OCID" ] || [ "$GROUP_OCID" = "null" ]; then
 fi
 
 if { [ "$GROUP_CREATED" = "true" ] || [ "${FORCE_DELETE:-false}" = "true" ]; }; then
+  # OCI requires an empty group; also covers state from before iam_user_in_group existed.
   if [ -n "$USER_OCID" ] && [ "$USER_OCID" != "null" ]; then
     oci iam group remove-user --group-id "$GROUP_OCID" --user-id "$USER_OCID" --force >/dev/null 2>&1 || true
   fi
