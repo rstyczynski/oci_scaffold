@@ -9,6 +9,7 @@
 #   FN_FUNCTION_NAME=echo
 #   FN_FUNCTION_SRC_DIR=src/fn/echo
 set -euo pipefail
+set -E  # ensure ERR trap fires in functions/subshells
 DIR="$(cd "$(dirname "$0")" && pwd)"
 export PATH="$DIR/do:$DIR/resource:$PATH"
 
@@ -16,6 +17,17 @@ export PATH="$DIR/do:$DIR/resource:$PATH"
 # Ensure each run resets summary counters even if caller exported a prior run id.
 unset _OCI_SCAFFOLD_RUN_ID _OCI_SCAFFOLD_STATE_FILE_REPORTED
 source "$DIR/do/oci_scaffold.sh"
+
+_on_err() {
+  local ec=$?
+  local line=${BASH_LINENO[0]:-unknown}
+  local cmd=${BASH_COMMAND:-unknown}
+  echo "  [FAIL] cycle-function.sh failed (exit ${ec}) at line ${line}: ${cmd}" >&2
+  if [ -n "${STATE_FILE:-}" ]; then
+    echo "  [FAIL] State file: ${STATE_FILE}" >&2
+  fi
+}
+trap _on_err ERR
 
 # ── compartment: ensure /oci_scaffold exists ────────────────────────────────
 _state_set '.inputs.compartment_path' '/oci_scaffold'

@@ -32,6 +32,7 @@ cycle-vault.sh          # Full cycle: Vault + Key + Secret
 cycle-log.sh            # Full cycle: Bucket + Log Group + Log
 cycle-compartment.sh    # Full cycle: IAM compartment path creation
 cycle-bucket.sh         # Full cycle: all bucket modes (OCID, name, URI, extra args)
+cycle-iam_access.sh     # Full cycle: IAM user + group + policy + API-key bucket test
 cycle-function.sh       # Full cycle: Fn app + deploy echo function + direct invoke test
 cycle-apigw.sh          # Full cycle: Fn app + function + API GW + Internet test
 ```
@@ -64,6 +65,13 @@ NAME_PREFIX=bkt ./cycle-bucket.sh
 
 # IAM compartment path cycle (creates all segments, tears them down)
 NAME_PREFIX=cmp COMPARTMENT_PATH=/oci_scaffold/home ./cycle-compartment.sh
+
+# IAM user access cycle (user + group + tenancy policy + temporary API key; create/delete bucket)
+NAME_PREFIX=iam ./cycle-iam_access.sh
+# If you upgraded from an older cycle without iam_group, use a fresh NAME_PREFIX or remove the old state file
+# so teardown order stays correct, or run teardown once with FORCE_DELETE=true.
+# If you see 401 NotAuthenticated on the bucket step, your shell may wrap `oci` and drop --config-file; run with:
+#   OCI_REAL_BIN=/opt/homebrew/bin/oci NAME_PREFIX=iam ./cycle-iam_access.sh
 
 # Compute instance cycle (VCN + subnet + instance, SSH-ready via CloudShell)
 NAME_PREFIX=compute ./cycle-compute.sh
@@ -109,6 +117,7 @@ NAME_PREFIX=gw \
 | Object Storage Bucket | yes | `cycle-log.sh`, `cycle-bucket.sh` |
 | Log Group, Log | yes | `cycle-log.sh` |
 | IAM Compartment path | yes | `cycle-compartment.sh` |
+| IAM User, Group, Policy | yes | `cycle-iam_access.sh` |
 | Functions Application | yes | `cycle-function.sh`, `cycle-apigw.sh` |
 | Functions Function (`fnfunc`) | yes | `cycle-function.sh`, `cycle-apigw.sh` |
 | API Gateway (ApiGw + Deployment) | yes | `cycle-apigw.sh` |
