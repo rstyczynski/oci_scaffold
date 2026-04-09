@@ -109,7 +109,10 @@ ensure-apigw.sh
 ensure-apigw_deployment.sh
 
 # ── test: call deployment endpoint over Internet ───────────────────────────
-DEPLOYMENT_ENDPOINT=$(_state_get '.apigw.deployment_endpoint')
+DEPLOYMENT_ENDPOINT=$(_state_get '.apigw_deployment.endpoint')
+if [ -z "${DEPLOYMENT_ENDPOINT:-}" ]; then
+  DEPLOYMENT_ENDPOINT=$(_state_get '.apigw.deployment_endpoint')
+fi
 ROUTE_PATH=$(_state_get '.inputs.apigw_route_path')
 ROUTE_PATH="${ROUTE_PATH:-/}"
 
@@ -210,11 +213,17 @@ print_summary
 
 # ── teardown prompt ────────────────────────────────────────────────────────
 echo ""
-echo "  API endpoint: $(_state_get '.apigw.deployment_endpoint')"
+_ep="$(_state_get '.apigw_deployment.endpoint')"
+[ -z "${_ep:-}" ] && _ep="$(_state_get '.apigw.deployment_endpoint')"
+echo "  API endpoint: ${_ep:-}"
 echo "  Fn App      : $(_state_get '.fn_app.ocid')"
 echo "  Fn Function : $(_state_get '.fn_function.ocid')"
-echo "  ApiGw       : $(_state_get '.apigw.gateway_ocid')"
-echo "  Deployment  : $(_state_get '.apigw.deployment_ocid')"
+_gw="$(_state_get '.apigw_gateway.ocid')"
+[ -z "${_gw:-}" ] && _gw="$(_state_get '.apigw.gateway_ocid')"
+_dep="$(_state_get '.apigw_deployment.ocid')"
+[ -z "${_dep:-}" ] && _dep="$(_state_get '.apigw.deployment_ocid')"
+echo "  ApiGw       : ${_gw:-}"
+echo "  Deployment  : ${_dep:-}"
 echo "  State file  : $STATE_FILE"
 echo ""
 

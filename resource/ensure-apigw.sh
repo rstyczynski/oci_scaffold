@@ -10,10 +10,10 @@
 #   .inputs.apigw_endpoint_type          (optional, default: PUBLIC)
 #
 # Writes to state.json:
-#   .apigw.gateway_ocid
-#   .apigw.gateway_name
-#   .apigw.gateway_endpoint_type
-#   .apigw.gateway_created              true | false
+#   .apigw_gateway.ocid
+#   .apigw_gateway.name
+#   .apigw_gateway.endpoint_type
+#   .apigw_gateway.created              true | false
 #
 # Run ensure-apigw_deployment.sh after this script when you need the deployment
 # (see cycle-apigw.sh).
@@ -40,7 +40,7 @@ APIGW_OCID=""
 if [ -n "$APIGW_OCID_IN" ] && [ "$APIGW_OCID_IN" != "null" ]; then
   APIGW_OCID="$APIGW_OCID_IN"
   _existing "API Gateway adopted: $APIGW_OCID"
-  _state_set '.apigw.gateway_created' false
+  _state_set '.apigw_gateway.created' false
 else
   APIGW_OCID=$(oci api-gateway gateway list \
     --compartment-id "$COMPARTMENT_OCID" \
@@ -81,17 +81,17 @@ else
       exit 1
     fi
     _done "API Gateway created: $APIGW_OCID"
-    _state_set '.apigw.gateway_created' true
+    _state_set '.apigw_gateway.created' true
   else
     _existing "API Gateway '$APIGW_NAME': $APIGW_OCID"
-    _state_set_if_unowned '.apigw.gateway_created'
+    _state_set_if_unowned '.apigw_gateway.created'
   fi
 fi
 
 _state_append_once '.meta.creation_order' '"apigw"'
-_state_set '.apigw.gateway_ocid' "$APIGW_OCID"
-_state_set '.apigw.gateway_name' "$APIGW_NAME"
-_state_set '.apigw.gateway_endpoint_type' "$APIGW_ENDPOINT_TYPE"
+_state_set '.apigw_gateway.ocid' "$APIGW_OCID"
+_state_set '.apigw_gateway.name' "$APIGW_NAME"
+_state_set '.apigw_gateway.endpoint_type' "$APIGW_ENDPOINT_TYPE"
 
 # Wait until gateway lifecycle is ACTIVE (call ensure-apigw_deployment.sh next).
 _wait_apigw_gateway_lifecycle_active "$APIGW_OCID" 600

@@ -5,6 +5,11 @@
 # `teardown-apigw.sh` still removes deployments when creation_order only has "apigw".
 #
 # Reads from state.json:
+#   .apigw_gateway.ocid
+#   .apigw_gateway.created
+#   .apigw_gateway.deleted
+#
+# Legacy compatibility (pre-split keys):
 #   .apigw.gateway_ocid
 #   .apigw.gateway_created
 #   .apigw.deleted
@@ -20,10 +25,24 @@ source "$(dirname "$0")/shared-apigw.sh"
 _RES_DIR="$(cd "$(dirname "$0")" && pwd)"
 "$_RES_DIR/teardown-apigw_deployment.sh"
 
-GW_OCID=$(_state_get '.apigw.gateway_ocid')
-GW_CREATED=$(_state_get '.apigw.gateway_created')
+GW_OCID=$(_state_get '.apigw_gateway.ocid')
+GW_CREATED=$(_state_get '.apigw_gateway.created')
+GW_DELETED=$(_state_get '.apigw_gateway.deleted')
 
-GW_DELETED=$(_state_get '.apigw.deleted')
+if { [ -z "$GW_OCID" ] || [ "$GW_OCID" = "null" ]; } && \
+   { [ -z "$GW_CREATED" ] || [ "$GW_CREATED" = "null" ]; }; then
+  # Migrate legacy layout if present.
+  GW_OCID=$(_state_get '.apigw.gateway_ocid')
+  GW_CREATED=$(_state_get '.apigw.gateway_created')
+  GW_DELETED=$(_state_get '.apigw.deleted')
+  if [ -n "$GW_OCID" ] && [ "$GW_OCID" != "null" ]; then
+    _state_set '.apigw_gateway.ocid' "$GW_OCID"
+    _state_set '.apigw_gateway.name' "$(_state_get '.apigw.gateway_name')"
+    _state_set '.apigw_gateway.endpoint_type' "$(_state_get '.apigw.gateway_endpoint_type')"
+    _state_set '.apigw_gateway.created' "$GW_CREATED"
+    _state_set '.apigw_gateway.deleted' "$GW_DELETED"
+  fi
+fi
 
 if [ "$GW_DELETED" = "true" ]; then
   _info "API Gateway: already deleted"
@@ -51,8 +70,9 @@ if { [ "$GW_CREATED" = "true" ] || [ "${FORCE_DELETE:-false}" = "true" ]; } && \
   if [ -n "$_gw_wr" ]; then
     _wait_apigw_work_request_get "$_gw_wr" "API Gateway gateway delete" 900 || exit 1
   fi
+  _wait_apigw_gateway_until_absent "$GW_OCID" "API Gateway gateway removed" 900 || exit 1
   _info "API Gateway deleted: $GW_OCID"
-  _state_set '.apigw.deleted' true
+  _state_set '.apigw_gateway.deleted' true
 else
   _info "API Gateway: nothing to delete"
 fi

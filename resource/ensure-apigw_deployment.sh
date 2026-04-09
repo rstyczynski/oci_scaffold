@@ -2,12 +2,12 @@
 # ensure-apigw_deployment.sh — idempotent API Gateway deployment (Functions backend)
 #
 # Expects gateway state from ensure-apigw.sh. Run after ensure-apigw.sh (see cycle-apigw.sh)
-# or standalone once .apigw.gateway_ocid is set.
+# or standalone once .apigw_gateway.ocid is set (legacy: .apigw.gateway_ocid).
 #
 # Reads from state.json:
 #   .inputs.oci_compartment              (required)
 #   .inputs.name_prefix                  (required)
-#   .apigw.gateway_ocid                  (required)
+#   .apigw_gateway.ocid                  (required; legacy: .apigw.gateway_ocid)
 #   .fn_app.ocid                         (required when using fn_function_name lookup)
 #   .inputs.fn_function_ocid             (optional — preferred)
 #   .inputs.fn_function_name             (optional)
@@ -17,11 +17,11 @@
 #   .inputs.apigw_methods                (optional, default: ANY)
 #
 # Writes to state.json:
-#   .apigw.deployment_ocid
-#   .apigw.deployment_name
-#   .apigw.deployment_path_prefix
-#   .apigw.deployment_endpoint
-#   .apigw.deployment_created            true | false
+#   .apigw_deployment.ocid
+#   .apigw_deployment.name
+#   .apigw_deployment.path_prefix
+#   .apigw_deployment.endpoint
+#   .apigw_deployment.created            true | false
 set -euo pipefail
 # shellcheck source=do/oci_scaffold.sh
 source "$(dirname "$0")/../do/oci_scaffold.sh"
@@ -80,7 +80,17 @@ _wait_apigw_deployment_ready() {
 
 COMPARTMENT_OCID=$(_state_get '.inputs.oci_compartment')
 NAME_PREFIX=$(_state_get '.inputs.name_prefix')
-APIGW_OCID=$(_state_get '.apigw.gateway_ocid')
+APIGW_OCID=$(_state_get '.apigw_gateway.ocid')
+if [ -z "$APIGW_OCID" ] || [ "$APIGW_OCID" = "null" ]; then
+  APIGW_OCID=$(_state_get '.apigw.gateway_ocid')
+  if [ -n "$APIGW_OCID" ] && [ "$APIGW_OCID" != "null" ]; then
+    # Migrate legacy layout into per-resource keys.
+    _state_set '.apigw_gateway.ocid' "$APIGW_OCID"
+    _state_set '.apigw_gateway.name' "$(_state_get '.apigw.gateway_name')"
+    _state_set '.apigw_gateway.endpoint_type' "$(_state_get '.apigw.gateway_endpoint_type')"
+    _state_set '.apigw_gateway.created' "$(_state_get '.apigw.gateway_created')"
+  fi
+fi
 
 FN_FUNCTION_OCID=$(_state_get '.inputs.fn_function_ocid')
 if [ -z "$FN_FUNCTION_OCID" ] || [ "$FN_FUNCTION_OCID" = "null" ]; then
@@ -193,10 +203,10 @@ if [ -z "$DEPLOYMENT_OCID" ] || [ "$DEPLOYMENT_OCID" = "null" ]; then
   fi
 
   _done "API Deployment created: $DEPLOYMENT_OCID"
-  _state_set '.apigw.deployment_created' true
+  _state_set '.apigw_deployment.created' true
 else
   _existing "API Deployment '$DEPLOYMENT_NAME': $DEPLOYMENT_OCID"
-  _state_set_if_unowned '.apigw.deployment_created'
+  _state_set_if_unowned '.apigw_deployment.created'
 fi
 
 _wait_apigw_deployment_ready "$COMPARTMENT_OCID" "$DEPLOYMENT_OCID" 300 || exit 1
@@ -206,7 +216,7 @@ DEPLOYMENT_ENDPOINT=$(oci api-gateway deployment get \
   --query 'data.endpoint' --raw-output 2>/dev/null) || true
 
 _state_append_once '.meta.creation_order' '"apigw_deployment"'
-_state_set '.apigw.deployment_ocid' "$DEPLOYMENT_OCID"
-_state_set '.apigw.deployment_name' "$DEPLOYMENT_NAME"
-_state_set '.apigw.deployment_path_prefix' "$PATH_PREFIX"
-_state_set '.apigw.deployment_endpoint' "${DEPLOYMENT_ENDPOINT:-}"
+_state_set '.apigw_deployment.ocid' "$DEPLOYMENT_OCID"
+_state_set '.apigw_deployment.name' "$DEPLOYMENT_NAME"
+_state_set '.apigw_deployment.path_prefix' "$PATH_PREFIX"
+_state_set '.apigw_deployment.endpoint' "${DEPLOYMENT_ENDPOINT:-}"

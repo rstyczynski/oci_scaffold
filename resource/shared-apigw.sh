@@ -81,3 +81,116 @@ _wait_apigw_gateway_lifecycle_active() {
     elapsed=$((elapsed + 5))
   done
 }
+
+# _wait_apigw_gateway_until_absent GATEWAY_OCID LABEL [MAX_SECONDS]
+# Call after gateway delete is accepted: poll until GET fails (resource gone) or
+# lifecycle is DELETED. Ensures state is not marked deleted while the gateway still exists.
+_wait_apigw_gateway_until_absent() {
+  local gw_id="$1"
+  local label="${2:-API Gateway gateway removed}"
+  local max_wait="${3:-900}"
+  local elapsed=0 gw_state=""
+
+  if [ -z "$gw_id" ] || [ "$gw_id" = "null" ]; then
+    echo "  [ERROR] API Gateway: missing gateway id ($label)" >&2
+    return 1
+  fi
+
+  while true; do
+    if gw_state=$(oci api-gateway gateway get --gateway-id "$gw_id" \
+      --query 'data."lifecycle-state"' --raw-output 2>/dev/null); then
+      :
+    else
+      sleep 2
+      if ! oci api-gateway gateway get --gateway-id "$gw_id" \
+        --query 'data."lifecycle-state"' --raw-output >/dev/null 2>&1; then
+        [ "$elapsed" -gt 0 ] && {
+          printf "\033[2K\r"
+          echo ""
+        }
+        return 0
+      fi
+      gw_state=$(oci api-gateway gateway get --gateway-id "$gw_id" \
+        --query 'data."lifecycle-state"' --raw-output 2>/dev/null) || gw_state="UNKNOWN"
+    fi
+
+    if [ "$gw_state" = "DELETED" ]; then
+      [ "$elapsed" -gt 0 ] && {
+        printf "\033[2K\r"
+        echo ""
+      }
+      return 0
+    fi
+
+    printf "\033[2K\r  [WAIT] %s … %ds (lifecycle: %s)  " "$label" "$elapsed" "${gw_state:-?}"
+
+    if [ "$gw_state" = "FAILED" ]; then
+      echo
+      echo "  [ERROR] $label — gateway in FAILED state: $gw_id" >&2
+      return 1
+    fi
+    if [ "$elapsed" -ge "$max_wait" ]; then
+      echo
+      echo "  [ERROR] $label — timed out after ${max_wait}s (lifecycle: ${gw_state:-?})" >&2
+      return 1
+    fi
+    sleep 5
+    elapsed=$((elapsed + 5))
+  done
+}
+
+# _wait_apigw_deployment_until_absent DEPLOYMENT_OCID LABEL [MAX_SECONDS]
+# Same as gateway: confirm deployment is gone before updating state.
+_wait_apigw_deployment_until_absent() {
+  local dep_id="$1"
+  local label="${2:-API Gateway deployment removed}"
+  local max_wait="${3:-900}"
+  local elapsed=0 dep_state=""
+
+  if [ -z "$dep_id" ] || [ "$dep_id" = "null" ]; then
+    echo "  [ERROR] API Gateway: missing deployment id ($label)" >&2
+    return 1
+  fi
+
+  while true; do
+    if dep_state=$(oci api-gateway deployment get --deployment-id "$dep_id" \
+      --query 'data."lifecycle-state"' --raw-output 2>/dev/null); then
+      :
+    else
+      sleep 2
+      if ! oci api-gateway deployment get --deployment-id "$dep_id" \
+        --query 'data."lifecycle-state"' --raw-output >/dev/null 2>&1; then
+        [ "$elapsed" -gt 0 ] && {
+          printf "\033[2K\r"
+          echo ""
+        }
+        return 0
+      fi
+      dep_state=$(oci api-gateway deployment get --deployment-id "$dep_id" \
+        --query 'data."lifecycle-state"' --raw-output 2>/dev/null) || dep_state="UNKNOWN"
+    fi
+
+    if [ "$dep_state" = "DELETED" ]; then
+      [ "$elapsed" -gt 0 ] && {
+        printf "\033[2K\r"
+        echo ""
+      }
+      return 0
+    fi
+
+    printf "\033[2K\r  [WAIT] %s … %ds (lifecycle: %s)  " "$label" "$elapsed" "${dep_state:-?}"
+
+    if [ "$dep_state" = "FAILED" ]; then
+      echo
+      echo "  [ERROR] $label — deployment in FAILED state: $dep_id" >&2
+      return 1
+    fi
+    if [ "$elapsed" -ge "$max_wait" ]; then
+      echo
+      echo "  [ERROR] $label — timed out after ${max_wait}s (lifecycle: ${dep_state:-?})" >&2
+      return 1
+    fi
+    sleep 5
+    elapsed=$((elapsed + 5))
+  done
+}

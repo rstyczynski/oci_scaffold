@@ -68,10 +68,6 @@ NAME_PREFIX=cmp COMPARTMENT_PATH=/oci_scaffold/home ./cycle-compartment.sh
 
 # IAM user access cycle (user + group + tenancy policy + temporary API key; create/delete bucket)
 NAME_PREFIX=iam ./cycle-iam_access.sh
-# If you upgraded from an older cycle without iam_group, use a fresh NAME_PREFIX or remove the old state file
-# so teardown order stays correct, or run teardown once with FORCE_DELETE=true.
-# If you see 401 NotAuthenticated on the bucket step, your shell may wrap `oci` and drop --config-file; run with:
-#   OCI_REAL_BIN=/opt/homebrew/bin/oci NAME_PREFIX=iam ./cycle-iam_access.sh
 
 # Compute instance cycle (VCN + subnet + instance, SSH-ready via CloudShell)
 NAME_PREFIX=compute ./cycle-compute.sh
@@ -89,19 +85,15 @@ COMPARTMENT_PATH=/oci_scaffold NAME_PREFIX=proxy ./cycle-proxy.sh
 NAME_PREFIX=fn ./cycle-function.sh
 
 # API GW cycle (deploy src/fn/echo and test via public API GW endpoint)
-NAME_PREFIX=gw ./cycle-apigw.sh
+NAME_PREFIX=apigw ./cycle-apigw.sh
 
-# Customize API GW paths/methods (example)
-NAME_PREFIX=gw \
-  APIGW_PATH_PREFIX=/marketing \
-  APIGW_ROUTE_PATH=/hello \
-  APIGW_METHODS=POST \
-  ./cycle-apigw.sh
-
-# Note: cycles default COMPARTMENT_OCID to the current `fn` context compartment.
-# If you want a different compartment, explicitly set COMPARTMENT_OCID=...
-# To force keeping an already-exported COMPARTMENT_OCID (and ignore `fn` context), set:
-#   RESPECT_COMPARTMENT_OCID=true
+# Customize API GW function/paths/methods (example)
+NAME_PREFIX=apigw \
+FN_FUNCTION_SRC_DIR=src/fn/echo \
+APIGW_PATH_PREFIX=/marketing \
+APIGW_ROUTE_PATH=/hello \
+APIGW_METHODS=POST \
+./cycle-apigw.sh
 ```
 
 ## Resource / cycle coverage
