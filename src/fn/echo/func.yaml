@@ -1,6 +1,6 @@
 schema_version: 20180708
 name: echo
-version: 0.0.24
+version: 0.0.39
 runtime: node
 build_image: fnproject/node:20-dev
 run_image: fnproject/node:20

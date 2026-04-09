@@ -1,22 +1,27 @@
 #!/usr/bin/env bash
-# teardown-apigw.sh — delete API Gateway Deployment + Gateway if created by ensure-apigw.sh
+# teardown-apigw.sh — delete API Gateway gateway if created by ensure-apigw.sh
+#
+# Always runs teardown-apigw_deployment.sh first (idempotent) so a lone
+# `teardown-apigw.sh` still removes deployments when creation_order only has "apigw".
 #
 # Reads from state.json:
 #   .apigw.gateway_ocid
 #   .apigw.gateway_created
-#   .apigw.deployment_ocid
-#   .apigw.deployment_created
+#   .apigw.deleted
 #
 # Optional:
 #   FORCE_DELETE=true  # deletes even if not created by this run
 set -euo pipefail
 # shellcheck source=do/oci_scaffold.sh
 source "$(dirname "$0")/../do/oci_scaffold.sh"
+# shellcheck source=resource/shared-apigw.sh
+source "$(dirname "$0")/shared-apigw.sh"
+
+_RES_DIR="$(cd "$(dirname "$0")" && pwd)"
+"$_RES_DIR/teardown-apigw_deployment.sh"
 
 GW_OCID=$(_state_get '.apigw.gateway_ocid')
 GW_CREATED=$(_state_get '.apigw.gateway_created')
-DEP_OCID=$(_state_get '.apigw.deployment_ocid')
-DEP_CREATED=$(_state_get '.apigw.deployment_created')
 
 GW_DELETED=$(_state_get '.apigw.deleted')
 
@@ -25,35 +30,29 @@ if [ "$GW_DELETED" = "true" ]; then
   exit 0
 fi
 
-# Delete deployment first.
-if { [ "$DEP_CREATED" = "true" ] || [ "${FORCE_DELETE:-false}" = "true" ]; } && \
-   [ -n "$DEP_OCID" ] && [ "$DEP_OCID" != "null" ]; then
-  oci api-gateway deployment delete \
-    --deployment-id "$DEP_OCID" \
-    --force \
-    --wait-for-state SUCCEEDED \
-    --wait-for-state FAILED \
-    --wait-for-state CANCELED \
-    --max-wait-seconds 900 >/dev/null
-  _info "API Deployment deleted: $DEP_OCID"
-  _state_set '.apigw.deployment_deleted' true
-else
-  _info "API Deployment: nothing to delete"
-fi
-
-# Then delete gateway.
 if { [ "$GW_CREATED" = "true" ] || [ "${FORCE_DELETE:-false}" = "true" ]; } && \
    [ -n "$GW_OCID" ] && [ "$GW_OCID" != "null" ]; then
-  oci api-gateway gateway delete \
+  _gw_del_err=$(mktemp)
+  _gw_del_json=""
+  if ! _gw_del_json=$(oci api-gateway gateway delete \
     --gateway-id "$GW_OCID" \
     --force \
-    --wait-for-state SUCCEEDED \
-    --wait-for-state FAILED \
-    --wait-for-state CANCELED \
-    --max-wait-seconds 900 >/dev/null
+    --raw-output 2>"$_gw_del_err"); then
+    echo "  [ERROR] API Gateway delete failed: $(cat "$_gw_del_err")" >&2
+    rm -f "$_gw_del_err"
+    exit 1
+  fi
+  rm -f "$_gw_del_err"
+
+  _gw_wr=$(echo "$_gw_del_json" | jq -r '
+    .["opc-work-request-id"] // .opcWorkRequestId
+    // .data["opc-work-request-id"] // .data.opcWorkRequestId // empty
+  ')
+  if [ -n "$_gw_wr" ]; then
+    _wait_apigw_work_request_get "$_gw_wr" "API Gateway gateway delete" 900 || exit 1
+  fi
   _info "API Gateway deleted: $GW_OCID"
   _state_set '.apigw.deleted' true
 else
   _info "API Gateway: nothing to delete"
 fi
-

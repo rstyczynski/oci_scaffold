@@ -12,6 +12,9 @@
 #   .inputs.fn_function_name       (optional, default: echo)
 #   .inputs.fn_function_src_dir    (optional, default: src/fn/echo)
 #
+# Optional environment:
+#   FN_FORCE_DEPLOY=true   # if the function already exists (ACTIVE), still run `fn deploy`
+#
 # Writes to state.json:
 #   .fn_function.ocid
 #   .fn_function.name
@@ -67,18 +70,37 @@ if ! fn update app "$FN_APP_NAME" --annotation "$_subnets_annotation" >/dev/null
   exit 1
 fi
 
-# Deploy from repo sources into the ensured application by name.
-# Note: Fn context (provider, registry) must already be configured for OCI.
-(
-  cd "$ABS_SRC_DIR"
-  fn deploy --app "$FN_APP_NAME" >/dev/null
-)
+# Deploy from repo sources only when the function is missing. An ACTIVE function
+# with this display name skips `fn deploy` (no image build/push). Use
+# FN_FORCE_DEPLOY=true to rebuild and redeploy anyway.
+FN_FORCE_DEPLOY="${FN_FORCE_DEPLOY:-false}"
 
-FN_FUNCTION_OCID=$(oci fn function list \
-  --application-id "$FN_APP_OCID" \
-  --display-name "$FN_FUNCTION_NAME" \
-  --query 'data[?("lifecycle-state"==`ACTIVE`)].id | [0]' \
-  --raw-output 2>/dev/null) || true
+if [ -n "$EXISTING_OCID" ] && [ "$EXISTING_OCID" != "null" ]; then
+  if [ "$FN_FORCE_DEPLOY" = "true" ]; then
+    _info "Fn Function '$FN_FUNCTION_NAME' already ACTIVE — FN_FORCE_DEPLOY=true, running fn deploy"
+    (
+      cd "$ABS_SRC_DIR"
+      fn deploy --app "$FN_APP_NAME" >/dev/null
+    )
+    FN_FUNCTION_OCID=$(oci fn function list \
+      --application-id "$FN_APP_OCID" \
+      --display-name "$FN_FUNCTION_NAME" \
+      --query 'data[?("lifecycle-state"==`ACTIVE`)].id | [0]' \
+      --raw-output 2>/dev/null) || true
+  else
+    FN_FUNCTION_OCID="$EXISTING_OCID"
+  fi
+else
+  (
+    cd "$ABS_SRC_DIR"
+    fn deploy --app "$FN_APP_NAME" >/dev/null
+  )
+  FN_FUNCTION_OCID=$(oci fn function list \
+    --application-id "$FN_APP_OCID" \
+    --display-name "$FN_FUNCTION_NAME" \
+    --query 'data[?("lifecycle-state"==`ACTIVE`)].id | [0]' \
+    --raw-output 2>/dev/null) || true
+fi
 
 if [ -z "$FN_FUNCTION_OCID" ] || [ "$FN_FUNCTION_OCID" = "null" ]; then
   echo "  [ERROR] Function deploy succeeded but OCID lookup failed for '$FN_FUNCTION_NAME' in app '$FN_APP_OCID'" >&2

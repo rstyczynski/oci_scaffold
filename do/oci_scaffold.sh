@@ -303,6 +303,53 @@ _oci_default_region() {
   fi
 }
 
+# ── DNS wait helper ─────────────────────────────────────────────────────────
+# _wait_dns_hostname HOSTNAME LABEL [MAX_SECONDS] [SLEEP_SECONDS]
+# Polls dig (system resolver, then @1.1.1.1, then @8.8.8.8) until HOSTNAME
+# returns a first answer line or timeout. Same [WAIT] UX as work-request polling.
+# Returns 0 when resolved, 1 on timeout or empty HOSTNAME. Requires `dig`.
+_wait_dns_hostname() {
+  local host="$1"
+  local label="$2"
+  local max_wait="${3:-300}"
+  local sleep_sec="${4:-5}"
+  local elapsed=0 ip=""
+
+  if [ -z "$host" ]; then
+    return 1
+  fi
+  if ! command -v dig >/dev/null 2>&1; then
+    echo "  [ERROR] dig not found in PATH; cannot wait on DNS for: $host" >&2
+    return 1
+  fi
+
+  while true; do
+    ip=""
+    ip=$(dig +short "$host" 2>/dev/null | head -1 || true)
+    if [ -z "${ip:-}" ]; then
+      ip=$(dig +short @1.1.1.1 "$host" 2>/dev/null | head -1 || true)
+    fi
+    if [ -z "${ip:-}" ]; then
+      ip=$(dig +short @8.8.8.8 "$host" 2>/dev/null | head -1 || true)
+    fi
+    if [ -n "${ip:-}" ]; then
+      [ "$elapsed" -gt 0 ] && {
+        printf "\033[2K\r"
+        echo ""
+      }
+      return 0
+    fi
+    if [ "$elapsed" -ge "$max_wait" ]; then
+      printf "\033[2K\r"
+      echo ""
+      return 1
+    fi
+    printf "\033[2K\r  [WAIT] %s … %ds (%s)  " "$label" "$elapsed" "$host"
+    sleep "$sleep_sec"
+    elapsed=$((elapsed + sleep_sec))
+  done
+}
+
 # ── OCI network helpers ────────────────────────────────────────────────────
 
 # _osn_service field   — field: id | cidr-block

@@ -106,6 +106,7 @@ ensure-fn_app.sh
 ensure-fn_function.sh
 ensure-apigw_fn_policy.sh
 ensure-apigw.sh
+ensure-apigw_deployment.sh
 
 # ── test: call deployment endpoint over Internet ───────────────────────────
 DEPLOYMENT_ENDPOINT=$(_state_get '.apigw.deployment_endpoint')
@@ -114,56 +115,96 @@ ROUTE_PATH="${ROUTE_PATH:-/}"
 
 _info "API endpoint: ${DEPLOYMENT_ENDPOINT:-<unknown>}"
 
-if [ -z "$DEPLOYMENT_ENDPOINT" ] || [ "$DEPLOYMENT_ENDPOINT" = "null" ]; then
+# Bash has no null; _state_get uses jq 'select(. != null)' so JSON null becomes empty.
+if [ -z "${DEPLOYMENT_ENDPOINT:-}" ]; then
   _fail "Missing deployment endpoint (API GW deploy may have failed)."
-else
-  _host=$(echo "$DEPLOYMENT_ENDPOINT" | sed -E 's#^https?://##' | sed -E 's#/.*$##')
-  if [ -n "${_host:-}" ]; then
-    _elapsed=0
-    _max_wait=180
-    _ip=""
-    while true; do
-      _ip=$(dig +short "$_host" 2>/dev/null | head -1 || true)
-      if [ -z "${_ip:-}" ]; then
-        _ip=$(dig +short @1.1.1.1 "$_host" 2>/dev/null | head -1 || true)
-      fi
-      [ -z "${_ip:-}" ] && _ip=$(dig +short @8.8.8.8 "$_host" 2>/dev/null | head -1 || true)
+  exit 1
+fi
 
-      [ -n "${_ip:-}" ] && break
-      [ "$_elapsed" -ge "$_max_wait" ] && { _fail "Gateway endpoint DNS did not resolve after ${_max_wait}s: $_host"; break; }
-      printf "\033[2K\r  [WAIT] DNS for %s … %ds" "$_host" "$_elapsed"
-      sleep 5
-      _elapsed=$((_elapsed + 5))
-    done
+base="${DEPLOYMENT_ENDPOINT%/}"
+path="/${ROUTE_PATH#/}"
+url="${base}${path}"
+
+payload='{"message":"hello from cycle-apigw","ts":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}'
+resp=$(mktemp -t apigw-call.XXXXXX)
+_curl_code_file=$(mktemp -t apigw-curlcode.XXXXXX)
+_curl_err_file=$(mktemp -t apigw-curlerr.XXXXXX)
+: >"$resp"
+http_code="000"
+_curl_exit=0
+
+# Public API GW hostnames often lag OCI "deployment ready"; wait for DNS before the
+# single POST (still one Fn invocation — no retry POSTs).
+_host=$(echo "$DEPLOYMENT_ENDPOINT" | sed -E 's#^https?://##' | sed -E 's#/.*$##')
+_apigw_skip_curl=false
+_dns_max=300
+if [ -n "$_host" ]; then
+  if ! _wait_dns_hostname "$_host" "DNS (API Gateway)" "$_dns_max" 5; then
+    _fail "Gateway hostname still not in DNS after ${_dns_max}s: $_host"
+    _apigw_skip_curl=true
+  fi
+fi
+
+# Prefer standard-PATH curl: some shells wrap `curl` (e.g. OCI helpers); wrappers
+# often break background redirects and yield an empty HTTP code file.
+_curl_bin=$(command -p curl 2>/dev/null || true)
+[ -z "${_curl_bin:-}" ] && [ -x /usr/bin/curl ] && _curl_bin=/usr/bin/curl
+[ -z "${_curl_bin:-}" ] && _curl_bin=$(command -v curl 2>/dev/null || true)
+
+if [ "$_apigw_skip_curl" = true ]; then
+  :
+elif [ -z "${_curl_bin:-}" ]; then
+  _fail "curl not found in PATH"
+else
+  # One POST only (one Fn invocation). Run curl in the background and poll so the
+  # terminal shows progress instead of sitting silent until curl finishes.
+  # Single-quote JSON and URL so the logged command is copy-paste safe (payload has no ').
+  _info "Invoking Fn Function via API Gateway: $(printf '%q' "$_curl_bin") -sS -H 'content-type: application/json' --data '${payload}' '${url}'"
+
+  "$_curl_bin" -sS -o "$resp" -w "%{http_code}" \
+    --connect-timeout 30 --max-time 120 \
+    -H "content-type: application/json" \
+    --data "$payload" \
+    "$url" >"$_curl_code_file" 2>"$_curl_err_file" &
+  _curl_pid=$!
+
+  _curl_wait_elapsed=0
+  while kill -0 "$_curl_pid" 2>/dev/null; do
+    printf "\033[2K\r  [WAIT] API Gateway curl … %ds (POST in flight)  " "$_curl_wait_elapsed"
+    sleep 1
+    _curl_wait_elapsed=$((_curl_wait_elapsed + 1))
+  done
+  # Child curl may exit non-zero (e.g. 6 = DNS); with set -E, wait can still fire ERR.
+  trap '' ERR
+  set +e
+  wait "$_curl_pid"
+  _curl_exit=$?
+  set -e
+  trap _on_err ERR
+  if [ "$_curl_wait_elapsed" -gt 0 ]; then
+    printf "\033[2K\r"
     echo ""
   fi
 
-  base="${DEPLOYMENT_ENDPOINT%/}"
-  path="/${ROUTE_PATH#/}"
-  url="${base}${path}"
+  http_code=$(tr -d ' \n\r' <"$_curl_code_file" 2>/dev/null || true)
+  [ -z "$http_code" ] && http_code="000"
 
-  payload='{"message":"hello from cycle-apigw","ts":"'$(date -u +%Y-%m-%dT%H:%M:%SZ)'"}'
-  resp=$(mktemp -t apigw-call.XXXXXX)
+  _curl_err=$(head -8 "$_curl_err_file" 2>/dev/null | paste -sd ' ' - || true)
+  rm -f "$_curl_code_file" "$_curl_err_file"
 
-  _curl_resolve=()
-  [ -n "${_host:-}" ] && [ -n "${_ip:-}" ] && _curl_resolve=(--resolve "${_host}:443:${_ip}")
-
-  http_code=$(curl -sS -o "$resp" -w "%{http_code}" \
-    --retry 5 --retry-all-errors --retry-delay 2 \
-    -H "content-type: application/json" \
-    --data "$payload" \
-    "${_curl_resolve[@]}" \
-    "$url" || true)
-
-  if [ "$http_code" = "200" ] && jq -e '.ok == true and (.echo.message // "") != ""' "$resp" >/dev/null 2>&1; then
-    _ok "API GW call OK: $url"
-  else
-    _fail "API GW call failed: HTTP $http_code ($url)"
-    _info "Response: $(cat "$resp" 2>/dev/null || true)"
+  if [ "$http_code" != "200" ] || [ "$_curl_exit" -ne 0 ]; then
+    [ -n "$_curl_err" ] && _info "curl: ${_curl_err}"
   fi
-
-  rm -f "$resp"
 fi
+
+if [ "$http_code" = "200" ] && jq -e '.ok == true and (.echo.message // "") != ""' "$resp" >/dev/null 2>&1; then
+  _ok "API GW call OK: $url"
+else
+  _fail "API GW call failed: HTTP $http_code ($url)"
+  _info "Response: $(cat "$resp" 2>/dev/null || true)"
+fi
+
+rm -f "$resp"
 
 print_summary
 

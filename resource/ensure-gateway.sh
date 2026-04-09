@@ -30,8 +30,9 @@ set -euo pipefail
 # shellcheck source=do/oci_scaffold.sh
 source "$(dirname "$0")/../do/oci_scaffold.sh"
 
-_info "ensure-gateway.sh is deprecated; use ensure-apigw.sh"
+_info "ensure-gateway.sh is deprecated; use ensure-apigw.sh + ensure-apigw_deployment.sh"
 ensure-apigw.sh
+ensure-apigw_deployment.sh
 
 # Back-compat state mirror (old key: .gateway.*, new key: .apigw.*)
 _state_set '.gateway.gateway_ocid' "$(_state_get '.apigw.gateway_ocid')"
