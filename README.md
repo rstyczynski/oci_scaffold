@@ -90,8 +90,8 @@ NAME_PREFIX=apigw ./cycle-apigw.sh
 # Customize API GW function/paths/methods (example)
 NAME_PREFIX=apigw \
 FN_FUNCTION_SRC_DIR=src/fn/echo \
-APIGW_PATH_PREFIX=/marketing \
-APIGW_ROUTE_PATH=/hello \
+APIGW_PATH_PREFIX=/oci_scaffold \
+APIGW_ROUTE_PATH=/echo \
 APIGW_METHODS=POST \
 ./cycle-apigw.sh
 ```

@@ -143,7 +143,7 @@ _apigw_skip_curl=false
 _dns_max=300
 if [ -n "$_host" ]; then
   if ! _wait_dns_hostname "$_host" "DNS (API Gateway)" "$_dns_max" 5; then
-    _fail "Gateway hostname still not in DNS after ${_dns_max}s: $_host"
+    _fail "Gateway hostname still not resolvable after ${_dns_max}s: $_host"
     _apigw_skip_curl=true
   fi
 fi
@@ -159,14 +159,39 @@ if [ "$_apigw_skip_curl" = true ]; then
 elif [ -z "${_curl_bin:-}" ]; then
   _fail "curl not found in PATH"
 else
+  # Some macOS setups can resolve via one resolver path (e.g. Python/system APIs)
+  # while /usr/bin/curl still reports (6) for the same hostname. When that happens,
+  # attempt a single-shot workaround using --resolve with a best-effort IP.
+  _curl_extra=()
+  _host_ip=""
+  if [ -n "${_host:-}" ]; then
+    if command -v python3 >/dev/null 2>&1; then
+      _host_ip=$(python3 -c 'import socket,sys; h=sys.argv[1];\nres=socket.getaddrinfo(h,None);\naddrs=[]\nfor r in res:\n  a=r[4][0]\n  if a not in addrs:\n    addrs.append(a)\nprint(addrs[0] if addrs else \"\")' "$_host" 2>/dev/null | head -1 || true)
+    fi
+    if [ -z "${_host_ip:-}" ] && command -v dig >/dev/null 2>&1; then
+      _host_ip=$(dig +short "$_host" 2>/dev/null | head -1 || true)
+    fi
+
+    if "$_curl_bin" -sS -o /dev/null --connect-timeout 2 --max-time 2 "https://$_host/" >/dev/null 2>&1; then
+      :
+    else
+      _probe_ec=$?
+      if [ "$_probe_ec" -eq 6 ] && [ -n "${_host_ip:-}" ]; then
+        _info "curl cannot resolve $_host; using --resolve $_host:443:$_host_ip"
+        _curl_extra+=(--resolve "${_host}:443:${_host_ip}")
+      fi
+    fi
+  fi
+
   # One POST only (one Fn invocation). Run curl in the background and poll so the
   # terminal shows progress instead of sitting silent until curl finishes.
   # Single-quote JSON and URL so the logged command is copy-paste safe (payload has no ').
-  _info "Invoking Fn Function via API Gateway: $(printf '%q' "$_curl_bin") -sS -H 'content-type: application/json' --data '${payload}' '${url}'"
+  _info "Invoking Fn Function via API Gateway: $(printf '%q' "$_curl_bin") -sS -H 'content-type: application/json' ${_curl_extra[*]:-} --data '${payload}' '${url}'"
 
   "$_curl_bin" -sS -o "$resp" -w "%{http_code}" \
     --connect-timeout 30 --max-time 120 \
     -H "content-type: application/json" \
+    "${_curl_extra[@]}" \
     --data "$payload" \
     "$url" >"$_curl_code_file" 2>"$_curl_err_file" &
   _curl_pid=$!

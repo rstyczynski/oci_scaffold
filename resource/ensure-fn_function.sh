@@ -18,6 +18,7 @@
 # Writes to state.json:
 #   .fn_function.ocid
 #   .fn_function.name
+#   .fn_function.version
 #   .fn_function.created           true | false
 set -euo pipefail
 # shellcheck source=do/oci_scaffold.sh
@@ -51,6 +52,19 @@ if [ ! -d "$ABS_SRC_DIR" ]; then
   exit 1
 fi
 
+FN_FUNC_YAML="$ABS_SRC_DIR/func.yaml"
+if [ ! -f "$FN_FUNC_YAML" ]; then
+  echo "  [ERROR] Missing func.yaml in function source dir: $FN_FUNC_YAML" >&2
+  exit 1
+fi
+
+LOCAL_VERSION=$(awk -F': *' '$1=="version"{print $2; exit}' "$FN_FUNC_YAML" 2>/dev/null | tr -d '\r' || true)
+if [ -z "${LOCAL_VERSION:-}" ] || [ "$LOCAL_VERSION" = "null" ]; then
+  echo "  [ERROR] Missing version: in $FN_FUNC_YAML" >&2
+  exit 1
+fi
+_state_set '.fn_function.version' "$LOCAL_VERSION"
+
 # Detect existing function in OCI first (so we can set created flag correctly).
 EXISTING_OCID=$(oci fn function list \
   --application-id "$FN_APP_OCID" \
@@ -71,8 +85,8 @@ if ! fn update app "$FN_APP_NAME" --annotation "$_subnets_annotation" >/dev/null
 fi
 
 # Deploy from repo sources only when the function is missing. An ACTIVE function
-# with this display name skips `fn deploy` (no image build/push). Use
-# FN_FORCE_DEPLOY=true to rebuild and redeploy anyway.
+# with this display name skips `fn deploy` when its image tag matches local func.yaml version.
+# Use FN_FORCE_DEPLOY=true to rebuild and redeploy anyway.
 FN_FORCE_DEPLOY="${FN_FORCE_DEPLOY:-false}"
 
 if [ -n "$EXISTING_OCID" ] && [ "$EXISTING_OCID" != "null" ]; then
@@ -88,7 +102,29 @@ if [ -n "$EXISTING_OCID" ] && [ "$EXISTING_OCID" != "null" ]; then
       --query 'data[?("lifecycle-state"==`ACTIVE`)].id | [0]' \
       --raw-output 2>/dev/null) || true
   else
-    FN_FUNCTION_OCID="$EXISTING_OCID"
+    # Compare remote deployed image tag with local func.yaml version.
+    remote_image=$(oci fn function get --function-id "$EXISTING_OCID" \
+      --query 'data.image' --raw-output 2>/dev/null) || remote_image=""
+    remote_tag=""
+    case "$remote_image" in
+      *:*) remote_tag="${remote_image##*:}" ;;
+      *)   remote_tag="" ;;
+    esac
+
+    if [ -n "${remote_tag:-}" ] && [ "$remote_tag" = "$LOCAL_VERSION" ]; then
+      FN_FUNCTION_OCID="$EXISTING_OCID"
+    else
+      _info "Fn Function '$FN_FUNCTION_NAME' already ACTIVE but version differs (local: $LOCAL_VERSION, remote: ${remote_tag:-unknown}) — running fn deploy"
+      (
+        cd "$ABS_SRC_DIR"
+        fn deploy --app "$FN_APP_NAME" >/dev/null
+      )
+      FN_FUNCTION_OCID=$(oci fn function list \
+        --application-id "$FN_APP_OCID" \
+        --display-name "$FN_FUNCTION_NAME" \
+        --query 'data[?("lifecycle-state"==`ACTIVE`)].id | [0]' \
+        --raw-output 2>/dev/null) || true
+    fi
   fi
 else
   (

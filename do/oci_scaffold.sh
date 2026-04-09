@@ -305,9 +305,10 @@ _oci_default_region() {
 
 # ── DNS wait helper ─────────────────────────────────────────────────────────
 # _wait_dns_hostname HOSTNAME LABEL [MAX_SECONDS] [SLEEP_SECONDS]
-# Polls dig (system resolver, then @1.1.1.1, then @8.8.8.8) until HOSTNAME
-# returns a first answer line or timeout. Same [WAIT] UX as work-request polling.
-# Returns 0 when resolved, 1 on timeout or empty HOSTNAME. Requires `dig`.
+# Wait until HOSTNAME can be resolved by the system resolver (close to what curl uses).
+# Falls back to dig (local + public resolvers) for visibility during DNS propagation.
+# Same [WAIT] UX as work-request polling.
+# Returns 0 when resolved, 1 on timeout or empty HOSTNAME.
 _wait_dns_hostname() {
   local host="$1"
   local label="$2"
@@ -318,19 +319,75 @@ _wait_dns_hostname() {
   if [ -z "$host" ]; then
     return 1
   fi
-  if ! command -v dig >/dev/null 2>&1; then
-    echo "  [ERROR] dig not found in PATH; cannot wait on DNS for: $host" >&2
+
+  _dns_system_resolve() {
+    # Prefer python3 (socket.getaddrinfo uses OS resolver on macOS/Linux).
+    if command -v python3 >/dev/null 2>&1; then
+      python3 - "$host" <<'PY' 2>/dev/null
+import socket, sys
+host = sys.argv[1]
+try:
+    res = socket.getaddrinfo(host, None)
+    addrs = []
+    for r in res:
+        addr = r[4][0]
+        if addr not in addrs:
+            addrs.append(addr)
+    if addrs:
+        print(addrs[0])
+        sys.exit(0)
+except Exception:
+    pass
+sys.exit(1)
+PY
+      return $?
+    fi
+
+    # macOS fallback if python3 isn't available.
+    if command -v dscacheutil >/dev/null 2>&1; then
+      dscacheutil -q host -a name "$host" 2>/dev/null | awk '/^ip_address: /{print $2; exit}' | head -1
+      return $?
+    fi
     return 1
-  fi
+  }
+
+  _dns_curl_resolve() {
+    # Use curl itself as the DNS oracle: if curl stops returning (6) "Could not resolve host",
+    # then the system stack curl is using can resolve the hostname.
+    local curl_bin=""
+    curl_bin=$(command -p curl 2>/dev/null || true)
+    [ -z "${curl_bin:-}" ] && [ -x /usr/bin/curl ] && curl_bin=/usr/bin/curl
+    [ -z "${curl_bin:-}" ] && curl_bin=$(command -v curl 2>/dev/null || true)
+    [ -z "${curl_bin:-}" ] && return 1
+
+    # We don't care about HTTP/TLS success here; only about DNS resolution.
+    # Exit 6 == DNS failure. Any other exit code means "DNS resolved (or at least not 6)".
+    "$curl_bin" -sS -o /dev/null \
+      --connect-timeout 2 --max-time 2 \
+      --insecure \
+      "https://$host/" >/dev/null 2>&1
+    local ec=$?
+    [ "$ec" -eq 6 ] && return 1
+    return 0
+  }
 
   while true; do
     ip=""
-    ip=$(dig +short "$host" 2>/dev/null | head -1 || true)
-    if [ -z "${ip:-}" ]; then
-      ip=$(dig +short @1.1.1.1 "$host" 2>/dev/null | head -1 || true)
+
+    if _dns_curl_resolve; then
+      ip="curl"
+    else
+      ip=$(_dns_system_resolve "$host" 2>/dev/null | head -1 || true)
     fi
-    if [ -z "${ip:-}" ]; then
-      ip=$(dig +short @8.8.8.8 "$host" 2>/dev/null | head -1 || true)
+
+    if [ -z "${ip:-}" ] && command -v dig >/dev/null 2>&1; then
+      ip=$(dig +short "$host" 2>/dev/null | head -1 || true)
+      if [ -z "${ip:-}" ]; then
+        ip=$(dig +short @1.1.1.1 "$host" 2>/dev/null | head -1 || true)
+      fi
+      if [ -z "${ip:-}" ]; then
+        ip=$(dig +short @8.8.8.8 "$host" 2>/dev/null | head -1 || true)
+      fi
     fi
     if [ -n "${ip:-}" ]; then
       [ "$elapsed" -gt 0 ] && {
