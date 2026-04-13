@@ -141,6 +141,23 @@ DEPLOYMENT_OCID=$(oci api-gateway deployment list \
   --raw-output 2>/dev/null) || true
 
 if [ -z "$DEPLOYMENT_OCID" ] || [ "$DEPLOYMENT_OCID" = "null" ]; then
+  # If the state file is stale (e.g. previous run interrupted), the deployment may exist
+  # but not be ACTIVE or may have a different name. OCI enforces uniqueness of pathPrefix
+  # per gateway, so we can adopt an existing deployment by PATH_PREFIX if create conflicts.
+  _dep_existing_by_prefix=$(oci api-gateway deployment list \
+    --compartment-id "$COMPARTMENT_OCID" \
+    --gateway-id "$APIGW_OCID" \
+    --all \
+    --query "data.items[?\"path-prefix\"=='${PATH_PREFIX}'].id | [0]" \
+    --raw-output 2>/dev/null) || true
+  if [ -n "$_dep_existing_by_prefix" ] && [ "$_dep_existing_by_prefix" != "null" ]; then
+    DEPLOYMENT_OCID="$_dep_existing_by_prefix"
+    _existing "API Deployment (path-prefix '$PATH_PREFIX'): $DEPLOYMENT_OCID"
+    _state_set_if_unowned '.apigw_deployment.created'
+  fi
+fi
+
+if [ -z "$DEPLOYMENT_OCID" ] || [ "$DEPLOYMENT_OCID" = "null" ]; then
   _spec_tmp=$(mktemp -t apigw-spec.XXXXXX)
 
   _methods_json=$(echo "$METHODS_CSV" | tr -d '[:space:]' | jq -Rc 'split(",") | map(select(length>0))')
@@ -176,34 +193,55 @@ if [ -z "$DEPLOYMENT_OCID" ] || [ "$DEPLOYMENT_OCID" = "null" ]; then
     --path-prefix "$PATH_PREFIX" \
     --specification "file://$_spec_tmp" \
     --raw-output 2>"$_dep_create_err"); then
-    echo "  [ERROR] API Deployment create failed: $(cat "$_dep_create_err")" >&2
+    # Common after Ctrl-C: create may have succeeded but state not persisted; retry adopt by PATH_PREFIX.
+    if grep -q "pathPrefix already exists" "$_dep_create_err" 2>/dev/null; then
+      _dep_existing_by_prefix=$(oci api-gateway deployment list \
+        --compartment-id "$COMPARTMENT_OCID" \
+        --gateway-id "$APIGW_OCID" \
+        --all \
+        --query "data.items[?\"path-prefix\"=='${PATH_PREFIX}'].id | [0]" \
+        --raw-output 2>/dev/null) || true
+      if [ -n "$_dep_existing_by_prefix" ] && [ "$_dep_existing_by_prefix" != "null" ]; then
+        DEPLOYMENT_OCID="$_dep_existing_by_prefix"
+        rm -f "$_dep_create_err" "$_spec_tmp"
+        _existing "API Deployment (path-prefix '$PATH_PREFIX'): $DEPLOYMENT_OCID"
+        _state_set_if_unowned '.apigw_deployment.created'
+        goto_after_create=true
+      fi
+    fi
+    if [ "${goto_after_create:-false}" != "true" ]; then
+      echo "  [ERROR] API Deployment create failed: $(cat "$_dep_create_err")" >&2
+      rm -f "$_dep_create_err" "$_spec_tmp"
+      exit 1
+    fi
     rm -f "$_dep_create_err" "$_spec_tmp"
-    exit 1
   fi
-  rm -f "$_dep_create_err"
-  rm -f "$_spec_tmp"
+  if [ "${goto_after_create:-false}" != "true" ]; then
+    rm -f "$_dep_create_err"
+    rm -f "$_spec_tmp"
 
-  _dep_wr=$(echo "$_dep_create_json" | jq -r '
-    .["opc-work-request-id"] // .opcWorkRequestId
-    // .data["opc-work-request-id"] // .data.opcWorkRequestId // empty
-  ')
-  if [ -n "$_dep_wr" ]; then
-    _wait_apigw_work_request_get "$_dep_wr" "API Gateway deployment create" 900 || exit 1
+    _dep_wr=$(echo "$_dep_create_json" | jq -r '
+      .["opc-work-request-id"] // .opcWorkRequestId
+      // .data["opc-work-request-id"] // .data.opcWorkRequestId // empty
+    ')
+    if [ -n "$_dep_wr" ]; then
+      _wait_apigw_work_request_get "$_dep_wr" "API Gateway deployment create" 900 || exit 1
+    fi
+
+    DEPLOYMENT_OCID=$(oci api-gateway deployment list \
+      --compartment-id "$COMPARTMENT_OCID" \
+      --gateway-id "$APIGW_OCID" \
+      --display-name "$DEPLOYMENT_NAME" \
+      --query 'data.items[0].id' \
+      --raw-output 2>/dev/null) || true
+    if [ -z "$DEPLOYMENT_OCID" ] || [ "$DEPLOYMENT_OCID" = "null" ]; then
+      echo "  [ERROR] API Deployment created but could not resolve OCID by name: $DEPLOYMENT_NAME" >&2
+      exit 1
+    fi
+
+    _done "API Deployment created: $DEPLOYMENT_OCID"
+    _state_set '.apigw_deployment.created' true
   fi
-
-  DEPLOYMENT_OCID=$(oci api-gateway deployment list \
-    --compartment-id "$COMPARTMENT_OCID" \
-    --gateway-id "$APIGW_OCID" \
-    --display-name "$DEPLOYMENT_NAME" \
-    --query 'data.items[0].id' \
-    --raw-output 2>/dev/null) || true
-  if [ -z "$DEPLOYMENT_OCID" ] || [ "$DEPLOYMENT_OCID" = "null" ]; then
-    echo "  [ERROR] API Deployment created but could not resolve OCID by name: $DEPLOYMENT_NAME" >&2
-    exit 1
-  fi
-
-  _done "API Deployment created: $DEPLOYMENT_OCID"
-  _state_set '.apigw_deployment.created' true
 else
   _existing "API Deployment '$DEPLOYMENT_NAME': $DEPLOYMENT_OCID"
   _state_set_if_unowned '.apigw_deployment.created'
