@@ -1,0 +1,67 @@
+[
+  {
+    "savedSearchId":       "oci-scaffold-log-explorer-tile",
+    "displayName":         "OCI Logging — Recent Logs",
+    "savedSearchType":     "SEARCH_SHOW_IN_DASHBOARD",
+    "rowSpan":             4,
+    "columnSpan":          6,
+    "nls":                 {},
+    "uiConfig":            {},
+    "dataConfig":          [
+      {
+        "dataConfigDetails": {
+          "searchFilters": {
+            "query": "search \"__COMPARTMENT_OCID__\"",
+            "timeStart": "-1h",
+            "timeEnd":   "now"
+          }
+        }
+      }
+    ],
+    "state":               "DEFAULT",
+    "drilldownConfig":     []
+  },
+  {
+    "savedSearchId":       "oci-scaffold-audit-events-tile",
+    "displayName":         "Audit Events — Last 24 Hours",
+    "savedSearchType":     "AUDIT_EVENT_CUSTOM_SHOW_IN_DASHBOARD",
+    "rowSpan":             4,
+    "columnSpan":          6,
+    "nls":                 {},
+    "uiConfig":            {},
+    "dataConfig":          [
+      {
+        "dataConfigDetails": {
+          "compartmentId": "__COMPARTMENT_OCID__",
+          "timeStart":     "-24h",
+          "timeEnd":       "now"
+        }
+      }
+    ],
+    "state":               "DEFAULT",
+    "drilldownConfig":     []
+  },
+  {
+    "savedSearchId":       "oci-scaffold-metrics-objectstorage-tile",
+    "displayName":         "Object Storage — Object Count",
+    "savedSearchType":     "METRIC_EXPLORATION_SHOW_IN_DASHBOARD",
+    "rowSpan":             4,
+    "columnSpan":          6,
+    "nls":                 {},
+    "uiConfig":            {},
+    "dataConfig":          [
+      {
+        "dataConfigDetails": {
+          "compartmentId": "__COMPARTMENT_OCID__",
+          "namespace":     "oci_objectstorage",
+          "metricName":    "ObjectCount",
+          "interval":      "1h",
+          "statistic":     "sum",
+          "dimensions":    []
+        }
+      }
+    ],
+    "state":               "DEFAULT",
+    "drilldownConfig":     []
+  }
+]
