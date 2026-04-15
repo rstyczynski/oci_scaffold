@@ -6,15 +6,14 @@ Instruction for the operator: keep the development sprint by sprint by changing 
 
 Instruction for the implementor: keep analysis, design and implementation as simple as possible to achieve goals presented as Backlog Items. Remove each not required feature sticking to the Backlog Items definitions.
 
-## Sprint 1 - <Title>
+## Sprint 1 - OCI Dashboard scaffold
 
 Status: Planned
 Mode: YOLO
-Test: unit, integration
-Regression: unit, integration
-
-<Optional: 1-2 sentences of context if the sprint goal is non-obvious.>
+Test: integration
+Regression: none
 
 Backlog Items:
 
-* OCI-1. <Title>
+* OCI-1. Add ensure/teardown scripts and cycle example for OCI Dashboard service
+* OCI-2. Exemplary dashboard with logging, audit, and metrics widgets
