@@ -8,7 +8,7 @@ Instruction for the implementor: keep analysis, design and implementation as sim
 
 ## Sprint 1 - OCI Dashboard scaffold
 
-Status: Progress
+Status: Done
 Mode: YOLO
 Test: integration
 Regression: none
