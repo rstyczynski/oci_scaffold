@@ -1,0 +1,45 @@
+  [INFO] COMPARTMENT_OCID defaulted to tenancy: ocid1.tenancy.oc1..aaaaaaaay2b2tvqcmqmndvcbz5kuptzuo7sp4vufarqfgoru7qojdgywb27a
+  [INFO] OCI_REGION defaulted to home region: eu-zurich-1
+  [INFO] STATE_FILE: /Users/rstyczynski/projects/oci_scaffold/state-oci-scaffold-sprint1.json
+
+════════════════════════════════════════════════════════
+ cycle-dashboard.sh | NAME_PREFIX: oci-scaffold-sprint1
+ COMPARTMENT_PATH  : /oci_scaffold/test
+ GROUP             : oci-scaffold-sprint1-group
+ DASHBOARD         : oci-scaffold-sprint1-dashboard
+ TILES             : /Users/rstyczynski/projects/oci_scaffold/resource/dashboard-widgets-example.json
+════════════════════════════════════════════════════════
+
+── Step 1: Compartment ─────────────────────────────────
+  [EXISTING] Compartment '/oci_scaffold': ocid1.compartment.oc1..aaaaaaaaxsyob4rojty3iqy64tkveltkqbmaos2ngb2ncsvvvexs42bxxqha
+  [EXISTING] Compartment '/oci_scaffold/test': ocid1.compartment.oc1..aaaaaaaafmq4oovbsusfafdmowob5cf2zyl43brk2o3epwrjox3yzzphwstq
+  [INFO] Compartment : ocid1.compartment.oc1..aaaaaaaafmq4oovbsusfafdmowob5cf2zyl43brk2o3epwrjox3yzzphwstq
+  [INFO] Region      : eu-zurich-1
+
+── Step 2: Dashboard group ─────────────────────────────
+  [DONE] Dashboard group created: oci-scaffold-sprint1-group (ocid1.consoledashboardgroup.oc1..aaaaaaaamg2jrlpb5xmoatq6pswgthlzosew4plrqxhw6uag3uj74o6d57qa)
+  [INFO] Group OCID  : ocid1.consoledashboardgroup.oc1..aaaaaaaamg2jrlpb5xmoatq6pswgthlzosew4plrqxhw6uag3uj74o6d57qa
+
+── Step 3: Dashboard — create with widgets ─────────────
+  [INFO] Using widget definitions from: /tmp/tiles-XXXXXX.json
+  [DONE] Dashboard created: oci-scaffold-sprint1-dashboard (ocid1.consoledashboard.oc1..aaaaaaaadlfyv27odnjiwb6mmngtf43lxe7dtbtn2cp4cb6cgp74frtj2ysa)
+  [INFO] Dashboard   : ocid1.consoledashboard.oc1..aaaaaaaadlfyv27odnjiwb6mmngtf43lxe7dtbtn2cp4cb6cgp74frtj2ysa
+  [INFO] Created     : true
+
+── Step 4: Adopt by OCID (expect created=false) ────────
+  [EXISTING] Dashboard: oci-scaffold-sprint1-dashboard (ocid1.consoledashboard.oc1..aaaaaaaadlfyv27odnjiwb6mmngtf43lxe7dtbtn2cp4cb6cgp74frtj2ysa)
+  [OK]   Step 4: adopted by OCID (created=false)
+
+── Step 5: Adopt by URI (expect created=false) ─────────
+  [EXISTING] Dashboard: oci-scaffold-sprint1-dashboard (ocid1.consoledashboard.oc1..aaaaaaaadlfyv27odnjiwb6mmngtf43lxe7dtbtn2cp4cb6cgp74frtj2ysa)
+  [OK]   Step 5: adopted by URI (created=false)
+
+── Step 6: Verify via CLI ──────────────────────────────
+  [OK]   Dashboard visible in OCI Console: 'oci-scaffold-sprint1-dashboard'
+
+── Step 7: Teardown ─────────────────────────────────────
+  [DONE] Dashboard deleted: oci-scaffold-sprint1-dashboard (ocid1.consoledashboard.oc1..aaaaaaaadlfyv27odnjiwb6mmngtf43lxe7dtbtn2cp4cb6cgp74frtj2ysa)
+  [DONE] Dashboard group deleted: oci-scaffold-sprint1-group (ocid1.consoledashboardgroup.oc1..aaaaaaaamg2jrlpb5xmoatq6pswgthlzosew4plrqxhw6uag3uj74o6d57qa)
+
+
+Summary: 4 CREATED, 4 EXISTING, 3 TESTED, 0 FAILED

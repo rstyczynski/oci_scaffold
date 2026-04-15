@@ -1,25 +1,28 @@
 #!/usr/bin/env bash
-# teardown-dashboard_group.sh — clear dashboard group metadata from state
+# teardown-dashboard_group.sh — delete OCI Dashboard Service dashboard group if created by ensure-dashboard_group.sh
 #
-# OCI Management Dashboard has no native group resource; the group is metadata only.
-# This script clears the state entries — no OCI API call is made.
-#
-# Reads from state.json:
+# Reads from state:
+#   .dashboard_group.ocid
 #   .dashboard_group.name
-#   .dashboard_group.created   (always false)
+#   .dashboard_group.created
 set -euo pipefail
 # shellcheck source=do/oci_scaffold.sh
 source "$(dirname "$0")/../do/oci_scaffold.sh"
 
+GROUP_OCID=$(_state_get '.dashboard_group.ocid')
 GROUP_NAME=$(_state_get '.dashboard_group.name')
+GROUP_CREATED=$(_state_get '.dashboard_group.created')
 GROUP_DELETED=$(_state_get '.dashboard_group.deleted')
 
 if [ "$GROUP_DELETED" = "true" ]; then
-  _info "Dashboard group: already cleared"
-elif [ -n "$GROUP_NAME" ] && [ "$GROUP_NAME" != "null" ]; then
-  _info "Dashboard group '${GROUP_NAME}': metadata-only resource, nothing to delete in OCI"
+  _info "Dashboard group: already deleted"
+elif { [ "$GROUP_CREATED" = "true" ] || [ "${FORCE_DELETE:-false}" = "true" ]; } && \
+     [ -n "$GROUP_OCID" ] && [ "$GROUP_OCID" != "null" ]; then
+  oci dashboard-service dashboard-group delete \
+    --dashboard-group-id "$GROUP_OCID" \
+    --force >/dev/null
+  _done "Dashboard group deleted: ${GROUP_NAME} (${GROUP_OCID})"
   _state_set '.dashboard_group.deleted' true
-  _ok "Dashboard group cleared: $GROUP_NAME"
 else
-  _ok "Dashboard group: nothing to clear"
+  _ok "Dashboard group: nothing to delete (created=false or OCID missing)"
 fi

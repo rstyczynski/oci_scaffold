@@ -1,67 +1,144 @@
 [
   {
-    "savedSearchId":       "oci-scaffold-log-explorer-tile",
-    "displayName":         "OCI Logging — Recent Logs",
-    "savedSearchType":     "SEARCH_SHOW_IN_DASHBOARD",
-    "rowSpan":             4,
-    "columnSpan":          6,
-    "nls":                 {},
-    "uiConfig":            {},
-    "dataConfig":          [
-      {
-        "dataConfigDetails": {
-          "searchFilters": {
-            "query": "search \"__COMPARTMENT_OCID__\"",
-            "timeStart": "-1h",
-            "timeEnd":   "now"
+    "id": "LoggingChart_oci_scaffold_01",
+    "title": "OCI Logging — Recent Logs",
+    "description": "All log entries in the compartment, last 1 hour",
+    "type": "Bar",
+    "data": {
+      "dataSource": "LoggingChart",
+      "api": {
+        "templateId": "loggingChart",
+        "type": "urlTemplate",
+        "variables": [
+          {
+            "fields": {
+              "value": [
+                "dashboard_log_table_datetime",
+                "dashboard_log_table_type",
+                "dashboard_log_table_data_message"
+              ]
+            },
+            "groupBy": {
+              "value": "data.result"
+            },
+            "mode": {
+              "value": "advanced"
+            },
+            "regionId": {
+              "value": "__OCI_REGION__"
+            },
+            "savedSearchCompartmentId": {},
+            "savedSearchId": {},
+            "searchQuery": {
+              "value": "search \"__COMPARTMENT_OCID__\" | sort by datetime desc"
+            },
+            "xAxis": {
+              "value": "rounddown(datetime, '1m')"
+            },
+            "yAxis": {
+              "value": "data.result"
+            }
           }
-        }
+        ]
       }
-    ],
-    "state":               "DEFAULT",
-    "drilldownConfig":     []
+    },
+    "layout": {
+      "height": 7,
+      "left": 0,
+      "minH": 3,
+      "minW": 4,
+      "top": 0,
+      "width": 12
+    }
   },
   {
-    "savedSearchId":       "oci-scaffold-audit-events-tile",
-    "displayName":         "Audit Events — Last 24 Hours",
-    "savedSearchType":     "AUDIT_EVENT_CUSTOM_SHOW_IN_DASHBOARD",
-    "rowSpan":             4,
-    "columnSpan":          6,
-    "nls":                 {},
-    "uiConfig":            {},
-    "dataConfig":          [
-      {
-        "dataConfigDetails": {
-          "compartmentId": "__COMPARTMENT_OCID__",
-          "timeStart":     "-24h",
-          "timeEnd":       "now"
-        }
+    "id": "LoggingChart_oci_scaffold_02",
+    "title": "Audit Log — Recent Events",
+    "description": "OCI Audit service events in the compartment, last 1 hour",
+    "type": "Bar",
+    "data": {
+      "dataSource": "LoggingChart",
+      "api": {
+        "templateId": "loggingChart",
+        "type": "urlTemplate",
+        "variables": [
+          {
+            "fields": {
+              "value": [
+                "dashboard_log_table_datetime",
+                "dashboard_log_table_type",
+                "dashboard_log_table_data_message"
+              ]
+            },
+            "groupBy": {
+              "value": "data.result"
+            },
+            "mode": {
+              "value": "advanced"
+            },
+            "regionId": {
+              "value": "__OCI_REGION__"
+            },
+            "savedSearchCompartmentId": {},
+            "savedSearchId": {},
+            "searchQuery": {
+              "value": "search \"__COMPARTMENT_OCID__/_Audit\" | sort by datetime desc"
+            },
+            "xAxis": {
+              "value": "rounddown(datetime, '1m')"
+            },
+            "yAxis": {
+              "value": "data.result"
+            }
+          }
+        ]
       }
-    ],
-    "state":               "DEFAULT",
-    "drilldownConfig":     []
+    },
+    "layout": {
+      "height": 7,
+      "left": 12,
+      "minH": 3,
+      "minW": 4,
+      "top": 0,
+      "width": 12
+    }
   },
   {
-    "savedSearchId":       "oci-scaffold-metrics-objectstorage-tile",
-    "displayName":         "Object Storage — Object Count",
-    "savedSearchType":     "METRIC_EXPLORATION_SHOW_IN_DASHBOARD",
-    "rowSpan":             4,
-    "columnSpan":          6,
-    "nls":                 {},
-    "uiConfig":            {},
-    "dataConfig":          [
-      {
-        "dataConfigDetails": {
-          "compartmentId": "__COMPARTMENT_OCID__",
-          "namespace":     "oci_objectstorage",
-          "metricName":    "ObjectCount",
-          "interval":      "1h",
-          "statistic":     "sum",
-          "dimensions":    []
-        }
+    "id": "Monitoring_oci_scaffold_01",
+    "title": "Object Storage — Object Count",
+    "description": "ObjectCount metric from oci_objectstorage namespace, hourly sum",
+    "type": "Line",
+    "data": {
+      "dataSource": "Monitoring",
+      "api": {
+        "templateId": "monitoring",
+        "type": "urlTemplate",
+        "variables": [
+          {
+            "compartmentId": {
+              "value": "__COMPARTMENT_OCID__"
+            },
+            "namespace": {
+              "value": "oci_objectstorage"
+            },
+            "query": {
+              "value": "ObjectCount[1h].sum()"
+            },
+            "regionId": {
+              "value": "__OCI_REGION__"
+            },
+            "resourceGroup": {}
+          }
+        ]
       }
-    ],
-    "state":               "DEFAULT",
-    "drilldownConfig":     []
+    },
+    "layout": {
+      "height": 7,
+      "left": 0,
+      "minH": 6,
+      "minW": 9,
+      "top": 7,
+      "width": 12
+    }
   }
 ]

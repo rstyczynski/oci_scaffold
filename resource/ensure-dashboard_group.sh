@@ -1,27 +1,44 @@
 #!/usr/bin/env bash
-# ensure-dashboard_group.sh — resolve and record OCI Management Dashboard group metadata
+# ensure-dashboard_group.sh — idempotent OCI Dashboard Service dashboard-group creation
 #
-# OCI Management Dashboard has no native group resource. A "group" is a logical
-# namespace: compartment + group name. This script resolves the compartment from
-# a URI and records the group metadata in state. No OCI resource is created.
+# Adopts an existing dashboard group or creates a new one if not found.
 #
-# Discovery:
-#   A. .inputs.dashboard_group_uri  — URI of the form /compartment/path/group-name
-#                                     Parses last segment as group name; rest as compartment path.
+# Discovery order:
+#   A. .inputs.dashboard_group_uri  — URI /compartment/path/group-name;
+#                                     last segment = group name, rest = compartment path;
+#                                     if not found, falls through to creation
 #   B. .inputs.dashboard_group_name + .inputs.oci_compartment
-#                                     Explicit name and compartment OCID.
+#                                     explicit name + compartment OCID;
+#                                     if not found, falls through to creation
+#   C. name_prefix fallback: {name_prefix}-group
+#
+# If found (A or B): records .dashboard_group.created=false; teardown will not delete it.
+# If created:        records .dashboard_group.created=true;  teardown will delete it.
 #
 # Outputs written to state:
-#   .dashboard_group.name          display name of the group
+#   .dashboard_group.name          display name
+#   .dashboard_group.ocid          OCI dashboard group OCID
 #   .dashboard_group.compartment   compartment OCID
-#   .dashboard_group.created       always false (no OCI resource created)
+#   .dashboard_group.created       true (created) | false (adopted)
 
 set -euo pipefail
 # shellcheck source=do/oci_scaffold.sh
 source "$(dirname "$0")/../do/oci_scaffold.sh"
 
+EXISTS=""
 GROUP_NAME=""
+GROUP_OCID=""
 COMPARTMENT_OCID="${COMPARTMENT_OCID:-}"
+
+# ── lookup helper ─────────────────────────────────────────────────────────────
+_group_lookup() {
+  local name="$1" compartment="$2"
+  oci dashboard-service dashboard-group list-dashboard-groups \
+    --compartment-id "$compartment" \
+    --display-name "$name" \
+    --lifecycle-state ACTIVE \
+    --query 'data.items[0].id' --raw-output 2>/dev/null || true
+}
 
 #
 # Path A: resolve from URI (/compartment/path/group-name)
@@ -43,19 +60,35 @@ if [ -n "$GROUP_URI" ]; then
   else
     COMPARTMENT_OCID=$(_oci_tenancy_ocid)
   fi
+  FOUND=$(_group_lookup "$GROUP_NAME" "$COMPARTMENT_OCID")
+  if [ -n "$FOUND" ] && [ "$FOUND" != "null" ]; then
+    GROUP_OCID="$FOUND"
+    EXISTS="$GROUP_NAME"
+  fi
 fi
 
 #
-# Path B: explicit name and compartment
+# Path B: explicit name + compartment
 #
-if [ -z "$GROUP_NAME" ]; then
+if [ -z "$EXISTS" ]; then
   _input=$(_state_get '.inputs.dashboard_group_name')
   [ -n "$_input" ] && GROUP_NAME="$_input"
 
   _input=$(_state_get '.inputs.oci_compartment')
   [ -n "$_input" ] && COMPARTMENT_OCID="$_input"
+
+  if [ -n "$GROUP_NAME" ] && [ -n "$COMPARTMENT_OCID" ]; then
+    FOUND=$(_group_lookup "$GROUP_NAME" "$COMPARTMENT_OCID")
+    if [ -n "$FOUND" ] && [ "$FOUND" != "null" ]; then
+      GROUP_OCID="$FOUND"
+      EXISTS="$GROUP_NAME"
+    fi
+  fi
 fi
 
+#
+# Path C: name_prefix fallback
+#
 if [ -z "$GROUP_NAME" ]; then
   NAME_PREFIX=$(_state_get '.inputs.name_prefix')
   _require_env NAME_PREFIX
@@ -64,9 +97,25 @@ fi
 
 _require_env COMPARTMENT_OCID
 
-_existing "Dashboard group '${GROUP_NAME}' (compartment: ${COMPARTMENT_OCID}) — metadata only, no OCI resource"
+#
+# Creation
+#
+if [ -z "$EXISTS" ]; then
+  GROUP_OCID=$(oci dashboard-service dashboard-group create \
+    --compartment-id "$COMPARTMENT_OCID" \
+    --display-name "$GROUP_NAME" \
+    --description "OCI Scaffold dashboard group: $GROUP_NAME" \
+    --query 'data.id' --raw-output)
+  _done "Dashboard group created: $GROUP_NAME ($GROUP_OCID)"
+  _state_set '.dashboard_group.created' true
+  _state_set '.dashboard_group.deleted' false
+else
+  _existing "Dashboard group: $GROUP_NAME ($GROUP_OCID)"
+  _state_set '.dashboard_group.created' false
+  _state_set '.dashboard_group.deleted' false
+fi
 
 _state_set '.dashboard_group.name'        "$GROUP_NAME"
+_state_set '.dashboard_group.ocid'        "$GROUP_OCID"
 _state_set '.dashboard_group.compartment' "$COMPARTMENT_OCID"
-_state_set '.dashboard_group.created'     false
 _state_append_once '.meta.creation_order' '"dashboard_group"'

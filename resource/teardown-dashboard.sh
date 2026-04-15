@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# teardown-dashboard.sh — delete OCI Management Dashboard if created by ensure-dashboard.sh
+# teardown-dashboard.sh — delete OCI Dashboard Service dashboard if created by ensure-dashboard.sh
 #
-# Reads from state.json:
+# Reads from state:
 #   .dashboard.ocid
 #   .dashboard.name
 #   .dashboard.created
@@ -18,8 +18,8 @@ if [ "$DASHBOARD_DELETED" = "true" ]; then
   _info "Dashboard: already deleted"
 elif { [ "$DASHBOARD_CREATED" = "true" ] || [ "${FORCE_DELETE:-false}" = "true" ]; } && \
      [ -n "$DASHBOARD_OCID" ] && [ "$DASHBOARD_OCID" != "null" ]; then
-  oci management-dashboard dashboard delete-management-dashboard \
-    --management-dashboard-id "$DASHBOARD_OCID" \
+  oci dashboard-service dashboard delete \
+    --dashboard-id "$DASHBOARD_OCID" \
     --force >/dev/null
   _done "Dashboard deleted: ${DASHBOARD_NAME} (${DASHBOARD_OCID})"
   _state_set '.dashboard.deleted' true
