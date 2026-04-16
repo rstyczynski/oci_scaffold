@@ -92,8 +92,10 @@ _state_set '.inputs.dashboard_tiles_file' "$_TILES_TMP"
 ensure-dashboard.sh
 
 DASHBOARD_OCID=$(_state_get '.dashboard.ocid')
+_DASHBOARD_CREATED=$(_state_get '.dashboard.created')
+_GROUP_CREATED=$(_state_get '.dashboard_group.created')
 _info "Dashboard   : $DASHBOARD_OCID"
-_info "Created     : $(_state_get '.dashboard.created')"
+_info "Created     : $_DASHBOARD_CREATED"
 rm -f "$_TILES_TMP"
 
 # ── Step 4: Adopt same dashboard by OCID ─────────────────────────────────────
@@ -116,6 +118,10 @@ else
   _info "Dashboard created (was absent — acceptable on clean run)"
 fi
 
+# Restore created flags (adopt tests set them to false)
+_state_set '.dashboard.created'       "$_DASHBOARD_CREATED"
+_state_set '.dashboard_group.created' "$_GROUP_CREATED"
+
 # ── Step 6: Verify ───────────────────────────────────────────────────────────
 _CHECK=$(oci dashboard-service dashboard get \
   --dashboard-id "$DASHBOARD_OCID" \
@@ -134,8 +140,6 @@ if [ "$SKIP_TEARDOWN" = "true" ]; then
   _info "Group     : $GROUP_OCID"
   _info "State     : $STATE_FILE"
 else
-  _state_set '.dashboard.created'       true
-  _state_set '.dashboard_group.created' true
   teardown-dashboard.sh
   teardown-dashboard_group.sh
 fi
