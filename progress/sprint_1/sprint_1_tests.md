@@ -89,3 +89,26 @@ NAME_PREFIX=qg1 ./do/teardown.sh
 [DONE] Dashboard deleted: qg1-dashboard
 [DONE] Dashboard group deleted: qg1-group
 ```
+
+---
+
+## Post-sprint Fix 6 — IT-2 test fails: STATE_FILE routing and jq false detection (2026-04-16)
+
+### Root cause 1 — STATE_FILE env prefix ignored by oci_scaffold.sh
+
+- **Issue:** `STATE_FILE="$adopt_state" bash ensure-dashboard.sh` used `state.json` instead of `$adopt_state`
+- **Root cause:** `oci_scaffold.sh` always re-derives STATE_FILE from NAME_PREFIX (or defaults to `state.json`) — externally-set STATE_FILE is overwritten
+- **Fix:** Pass `NAME_PREFIX="${prefix}-adopt"` so oci_scaffold.sh derives `state-${prefix}-adopt.json`, which matches the pre-created adopt state file; same fix applied to teardown calls (NAME_PREFIX="${prefix}")
+
+### Root cause 2 — jq `// empty` is falsy for JSON false
+
+- **Issue:** `jq -r '.dashboard.created // empty'` returned empty string when value was JSON `false`
+- **Root cause:** jq's `//` (alternative) operator treats `false` as falsy; `false // empty` → `empty`
+- **Fix:** Changed to `jq -r '.dashboard.created | tostring'` — JSON `false` renders as shell string `"false"`
+
+### Integration test result (2026-04-16)
+
+```text
+bash tests/integration/test_dashboard.sh
+Results: 4 passed, 0 failed
+```
