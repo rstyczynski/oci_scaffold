@@ -93,6 +93,7 @@ NAME_PREFIX=dash ./cycle-dashboard.sh
 
 # Dashboard cycle — keep resources after cycle for Console inspection
 NAME_PREFIX=dash SKIP_TEARDOWN=true ./cycle-dashboard.sh
+NAME_PREFIX=dash ./do/teardown.sh
 
 # Customize API GW function/paths/methods (example)
 NAME_PREFIX=apigw \
