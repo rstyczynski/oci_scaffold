@@ -99,9 +99,9 @@ _state_set '.inputs.dashboard_ocid' "$DASHBOARD_OCID"
 _state_set '.inputs.dashboard_uri'  ''
 ensure-dashboard.sh
 if [ "$(_state_get '.dashboard.created')" = "false" ]; then
-  _ok "Step 4: adopted by OCID (created=false)"
+  _ok "Adopted by OCID"
 else
-  _fail "Step 4: expected created=false"
+  _fail "Expected created=false after OCID adoption"
 fi
 _state_set '.inputs.dashboard_ocid' ''
 
@@ -109,9 +109,9 @@ _state_set '.inputs.dashboard_ocid' ''
 _state_set '.inputs.dashboard_uri' "${COMPARTMENT_PATH}/${DASHBOARD_GROUP_NAME}/${DASHBOARD_NAME}"
 ensure-dashboard.sh
 if [ "$(_state_get '.dashboard.created')" = "false" ]; then
-  _ok "Step 5: adopted by URI (created=false)"
+  _ok "Adopted by URI"
 else
-  _info "Step 5: dashboard created (was absent — acceptable on clean run)"
+  _info "Dashboard created (was absent — acceptable on clean run)"
 fi
 
 # ── Step 6: Verify ───────────────────────────────────────────────────────────
