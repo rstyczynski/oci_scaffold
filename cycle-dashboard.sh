@@ -2,14 +2,11 @@
 # cycle-dashboard.sh — full lifecycle: dashboard group + dashboard with widgets + teardown
 #
 # Usage:
-#   NAME_PREFIX=test1 ./cycle-dashboard.sh
+#   DASHBOARD_URI=/oci_scaffold/test/my-group/my-dashboard ./cycle-dashboard.sh
 #
 # Optional overrides:
-#   COMPARTMENT_PATH=/oci_scaffold/test   (default)
-#   DASHBOARD_GROUP_NAME=...             (default: {NAME_PREFIX}-group)
-#   DASHBOARD_NAME=...                   (default: {NAME_PREFIX}-dashboard)
-#   TILES_FILE=...                       (default: resource/dashboard-widgets-example.json)
-#   SKIP_TEARDOWN=true                   (retain resources after cycle for inspection)
+#   TILES_FILE=...      (default: resource/dashboard-widgets-example.json)
+#   SKIP_TEARDOWN=true  (retain resources after cycle for inspection)
 #
 # What this cycle covers:
 #   1. Compartment  — ensures /oci_scaffold/test exists
@@ -25,8 +22,7 @@ set -E
 DIR="$(cd "$(dirname "$0")" && pwd)"
 export PATH="$DIR/do:$DIR/resource:$PATH"
 
-: "${NAME_PREFIX:?NAME_PREFIX must be set}"
-BASE_PREFIX="$NAME_PREFIX"
+: "${DASHBOARD_URI:?DASHBOARD_URI must be set (e.g. /oci_scaffold/test/my-group/my-dashboard)}"
 source "$DIR/do/oci_scaffold.sh"
 
 _on_err() {
@@ -36,15 +32,31 @@ _on_err() {
 }
 trap _on_err ERR
 
-COMPARTMENT_PATH="${COMPARTMENT_PATH:-/oci_scaffold/test}"
-DASHBOARD_GROUP_NAME="${DASHBOARD_GROUP_NAME:-${BASE_PREFIX}-group}"
-DASHBOARD_NAME="${DASHBOARD_NAME:-${BASE_PREFIX}-dashboard}"
+# Parse URI: /compartment/path/group-name/dashboard-name
+_uri="${DASHBOARD_URI%/}"
+DASHBOARD_NAME="${_uri##*/}"
+_remainder="${_uri%/*}"
+DASHBOARD_GROUP_NAME="${_remainder##*/}"
+COMPARTMENT_PATH="${_remainder%/*}"
+
+if [ -z "$DASHBOARD_NAME" ] || [ -z "$DASHBOARD_GROUP_NAME" ] || [ -z "$COMPARTMENT_PATH" ]; then
+  echo "  [FAIL] DASHBOARD_URI must have at least 4 segments: /compartment/path/group/dashboard" >&2
+  exit 1
+fi
+
+# Derive NAME_PREFIX from group name (strip trailing -group suffix if present)
+NAME_PREFIX="${DASHBOARD_GROUP_NAME%-group}"
+export NAME_PREFIX
+# Re-derive STATE_FILE now that NAME_PREFIX is known
+STATE_FILE="${PWD}/state-${NAME_PREFIX}.json"
+export STATE_FILE
+
 TILES_FILE="${TILES_FILE:-${DIR}/resource/dashboard-widgets-example.json}"
 SKIP_TEARDOWN="${SKIP_TEARDOWN:-false}"
 
 echo ""
 echo "════════════════════════════════════════════════════════"
-echo " cycle-dashboard.sh | NAME_PREFIX: $BASE_PREFIX"
+echo " cycle-dashboard.sh | DASHBOARD_URI: $DASHBOARD_URI"
 echo " COMPARTMENT_PATH  : $COMPARTMENT_PATH"
 echo " GROUP             : $DASHBOARD_GROUP_NAME"
 echo " DASHBOARD         : $DASHBOARD_NAME"
@@ -52,8 +64,6 @@ echo " TILES             : $TILES_FILE"
 echo "════════════════════════════════════════════════════════"
 
 # ── Step 1: Ensure compartment ───────────────────────────────────────────────
-echo ""
-echo "── Step 1: Compartment ─────────────────────────────────"
 _summary_reset
 _state_set '.inputs.compartment_path' "$COMPARTMENT_PATH"
 ensure-compartment.sh
@@ -65,8 +75,6 @@ _info "Compartment : $COMPARTMENT_OCID"
 _info "Region      : $OCI_REGION"
 
 # ── Step 2: Dashboard group via URI ──────────────────────────────────────────
-echo ""
-echo "── Step 2: Dashboard group ─────────────────────────────"
 _state_set '.inputs.dashboard_group_uri' "${COMPARTMENT_PATH}/${DASHBOARD_GROUP_NAME}"
 ensure-dashboard_group.sh
 
@@ -74,9 +82,6 @@ GROUP_OCID=$(_state_get '.dashboard_group.ocid')
 _info "Group OCID  : $GROUP_OCID"
 
 # ── Step 3: Dashboard with widgets ───────────────────────────────────────────
-echo ""
-echo "── Step 3: Dashboard — create with widgets ─────────────"
-
 # Inject COMPARTMENT_OCID and OCI_REGION into tile definitions
 _TILES_TMP=$(mktemp /tmp/tiles-XXXXXX.json)
 jq --arg cid "$COMPARTMENT_OCID" --arg region "$OCI_REGION" \
@@ -96,8 +101,6 @@ _info "Created     : $(_state_get '.dashboard.created')"
 rm -f "$_TILES_TMP"
 
 # ── Step 4: Adopt same dashboard by OCID ─────────────────────────────────────
-echo ""
-echo "── Step 4: Adopt by OCID (expect created=false) ────────"
 _state_set '.inputs.dashboard_ocid' "$DASHBOARD_OCID"
 _state_set '.inputs.dashboard_uri'  ''
 ensure-dashboard.sh
@@ -109,8 +112,6 @@ fi
 _state_set '.inputs.dashboard_ocid' ''
 
 # ── Step 5: Adopt same dashboard by URI ──────────────────────────────────────
-echo ""
-echo "── Step 5: Adopt by URI (expect created=false) ─────────"
 _state_set '.inputs.dashboard_uri' "${COMPARTMENT_PATH}/${DASHBOARD_GROUP_NAME}/${DASHBOARD_NAME}"
 ensure-dashboard.sh
 if [ "$(_state_get '.dashboard.created')" = "false" ]; then
@@ -120,8 +121,6 @@ else
 fi
 
 # ── Step 6: Verify ───────────────────────────────────────────────────────────
-echo ""
-echo "── Step 6: Verify via CLI ──────────────────────────────"
 _CHECK=$(oci dashboard-service dashboard get \
   --dashboard-id "$DASHBOARD_OCID" \
   --query 'data."display-name"' --raw-output 2>/dev/null) || _CHECK=""
@@ -142,14 +141,11 @@ fi
 
 # ── Step 7: Teardown ─────────────────────────────────────────────────────────
 if [ "$SKIP_TEARDOWN" = "true" ]; then
-  echo ""
-  echo "── Step 7: Teardown SKIPPED (SKIP_TEARDOWN=true) ───────"
-  echo "  Dashboard OCID : $DASHBOARD_OCID"
-  echo "  Group OCID     : $GROUP_OCID"
-  echo "  State file     : $STATE_FILE"
+  _info "Teardown skipped (SKIP_TEARDOWN=true)"
+  _info "Dashboard : $DASHBOARD_OCID"
+  _info "Group     : $GROUP_OCID"
+  _info "State     : $STATE_FILE"
 else
-  echo ""
-  echo "── Step 7: Teardown ─────────────────────────────────────"
   _state_set '.dashboard.created'       true
   _state_set '.dashboard_group.created' true
   teardown-dashboard.sh
