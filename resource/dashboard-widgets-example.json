@@ -5,7 +5,7 @@
     "data": {
       "dataSource": "Markdown",
       "staticWidgetData": {
-        "text": "## OCI Scaffold Dashboard\n\nCompartment telemetry for integration testing.\n\n| Widget | Source |\n|--------|--------|\n| Audit Log Table | OCI Audit (`/_Audit`) |\n| Object Storage  | `oci_objectstorage ObjectCount` metric |"
+        "text": "## OCI Scaffold Dashboard\n\nCompartment telemetry for integration testing.\n\n| Widget | Source |\n|--------|--------|\n| Audit Log Table | OCI Audit (`/_Audit`) |\n| VCN             | `oci_vcn VnicFromNetworkBytes` (tenancy scope) |"
       }
     },
     "layout": {
@@ -69,8 +69,8 @@
   },
   {
     "id": "Monitoring_oci_scaffold_01",
-    "title": "Object Storage — Object Count",
-    "description": "ObjectCount metric from oci_objectstorage namespace, hourly sum",
+    "title": "VCN — Byte Count",
+    "description": "",
     "type": "Line",
     "data": {
       "dataSource": "Monitoring",
@@ -80,13 +80,13 @@
         "variables": [
           {
             "compartmentId": {
-              "value": "__COMPARTMENT_OCID__"
+              "value": "__TENANCY_OCID__"
             },
             "namespace": {
-              "value": "oci_objectstorage"
+              "value": "oci_vcn"
             },
             "query": {
-              "value": "ObjectCount[1h].sum()"
+              "value": "VnicFromNetworkBytes[${interval}].mean()"
             },
             "regionId": {
               "value": "__OCI_REGION__"

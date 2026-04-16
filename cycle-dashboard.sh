@@ -77,10 +77,12 @@ _info "Group OCID  : $GROUP_OCID"
 
 # ── Step 3: Dashboard with widgets ───────────────────────────────────────────
 # Inject COMPARTMENT_OCID and OCI_REGION into tile definitions
+TENANCY_OCID=$(_oci_tenancy_ocid)
 _TILES_TMP=$(mktemp /tmp/tiles-XXXXXX.json)
-jq --arg cid "$COMPARTMENT_OCID" --arg region "$OCI_REGION" \
+jq --arg cid "$COMPARTMENT_OCID" --arg tid "$TENANCY_OCID" --arg region "$OCI_REGION" \
   'walk(if type == "string" then
      gsub("__COMPARTMENT_OCID__"; $cid) |
+     gsub("__TENANCY_OCID__"; $tid) |
      gsub("__OCI_REGION__"; $region)
    else . end)' \
   "$TILES_FILE" > "$_TILES_TMP"
