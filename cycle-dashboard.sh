@@ -44,8 +44,8 @@ if [ -z "$DASHBOARD_NAME" ] || [ -z "$DASHBOARD_GROUP_NAME" ] || [ -z "$COMPARTM
   exit 1
 fi
 
-# Derive NAME_PREFIX from group name (strip trailing -group suffix if present)
-NAME_PREFIX="${DASHBOARD_GROUP_NAME%-group}"
+# NAME_PREFIX: use caller-supplied value if set; otherwise derive from group name
+NAME_PREFIX="${NAME_PREFIX:-${DASHBOARD_GROUP_NAME%-group}}"
 export NAME_PREFIX
 # Re-derive STATE_FILE now that NAME_PREFIX is known
 STATE_FILE="${PWD}/state-${NAME_PREFIX}.json"
