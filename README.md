@@ -96,8 +96,8 @@ NAME_PREFIX=dash \
 DASHBOARD_URI=/oci_scaffold/test/group/dash \
 SKIP_TEARDOWN=true \
 ./cycle-dashboard.sh
-# Open dashboard in OCI Console:
-# jq -r '"https://cloud.oracle.com/dashboard/group/\(.dashboard_group.ocid)/dashboards/\(.dashboard.ocid)?region=\(.meta.region)"' state-dash.json
+
+echo "Open dashboard in OCI Console: $(jq -r '"https://cloud.oracle.com/dashboard/group/\(.dashboard_group.ocid)/dashboards/\(.dashboard.ocid)?region=\(.meta.region)"' state-dash.json)"
 
 NAME_PREFIX=dash ./do/teardown.sh
 
