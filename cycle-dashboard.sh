@@ -120,15 +120,7 @@ _CHECK=$(oci dashboard-service dashboard get \
   --query 'data."display-name"' --raw-output 2>/dev/null) || _CHECK=""
 if [ -n "$_CHECK" ] && [ "$_CHECK" != "null" ]; then
   _ok "Dashboard visible in OCI Console: '$_CHECK'"
-  echo ""
-  echo "  ┌─ OCI Console ────────────────────────────────────────────────────"
-  echo "  │  Region     : $OCI_REGION"
-  echo "  │  Compartment: $COMPARTMENT_PATH"
-  echo "  │  Group      : $DASHBOARD_GROUP_NAME"
-  echo "  │  Dashboard  : $DASHBOARD_NAME"
-  echo "  │"
-  echo "  │  URL: https://cloud.oracle.com/dashboards?region=${OCI_REGION}&compartmentId=${COMPARTMENT_OCID}"
-  echo "  └──────────────────────────────────────────────────────────────────"
+  _info "URL: https://cloud.oracle.com/dashboards?region=${OCI_REGION}&compartmentId=${COMPARTMENT_OCID}"
 else
   _fail "Dashboard not found by OCID"
 fi

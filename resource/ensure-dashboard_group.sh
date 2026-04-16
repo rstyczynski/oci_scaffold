@@ -106,11 +106,11 @@ if [ -z "$EXISTS" ]; then
     --display-name "$GROUP_NAME" \
     --description "OCI Scaffold dashboard group: $GROUP_NAME" \
     --query 'data.id' --raw-output)
-  _done "Dashboard group created: $GROUP_NAME ($GROUP_OCID)"
+  _done "Dashboard group created: $GROUP_NAME"
   _state_set '.dashboard_group.created' true
   _state_set '.dashboard_group.deleted' false
 else
-  _existing "Dashboard group: $GROUP_NAME ($GROUP_OCID)"
+  _existing "Dashboard group: $GROUP_NAME"
   _state_set '.dashboard_group.created' false
   _state_set '.dashboard_group.deleted' false
 fi

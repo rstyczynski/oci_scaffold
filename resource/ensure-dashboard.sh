@@ -180,11 +180,11 @@ if [ -z "$EXISTS" ]; then
     --widgets "$WIDGETS_JSON" \
     --query 'data.id' --raw-output)
 
-  _done "Dashboard created: $DASHBOARD_NAME ($DASHBOARD_OCID)"
+  _done "Dashboard created: $DASHBOARD_NAME"
   _state_set '.dashboard.created' true
   _state_set '.dashboard.deleted' false
 else
-  _existing "Dashboard: $DASHBOARD_NAME ($DASHBOARD_OCID)"
+  _existing "Dashboard: $DASHBOARD_NAME"
   _state_set '.dashboard.created' false
   _state_set '.dashboard.deleted' false
 fi
