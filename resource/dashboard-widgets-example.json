@@ -5,7 +5,7 @@
     "data": {
       "dataSource": "Markdown",
       "staticWidgetData": {
-        "text": "## OCI Scaffold Dashboard\n\nCompartment telemetry for integration testing.\n\n| Widget | Source |\n|--------|--------|\n| Audit Log Table | OCI Audit (`/_Audit`) — always has data |\n| Audit Log Chart | OCI Logging bar chart |\n| Object Storage  | `oci_objectstorage ObjectCount` metric |"
+        "text": "## OCI Scaffold Dashboard\n\nCompartment telemetry for integration testing.\n\n| Widget | Source |\n|--------|--------|\n| Audit Log Table | OCI Audit (`/_Audit`) |\n| Object Storage  | `oci_objectstorage ObjectCount` metric |"
       }
     },
     "layout": {
@@ -68,58 +68,6 @@
     }
   },
   {
-    "id": "LoggingChart_oci_scaffold_01",
-    "title": "Audit Log — Event Count",
-    "description": "OCI Audit event counts per minute, last 1 hour",
-    "type": "Bar",
-    "data": {
-      "dataSource": "LoggingChart",
-      "api": {
-        "templateId": "loggingChart",
-        "type": "urlTemplate",
-        "variables": [
-          {
-            "fields": {
-              "value": [
-                "dashboard_log_table_datetime",
-                "dashboard_log_table_type",
-                "dashboard_log_table_data_message"
-              ]
-            },
-            "groupBy": {
-              "value": "data.result"
-            },
-            "mode": {
-              "value": "advanced"
-            },
-            "regionId": {
-              "value": "__OCI_REGION__"
-            },
-            "savedSearchCompartmentId": {},
-            "savedSearchId": {},
-            "searchQuery": {
-              "value": "search \"__COMPARTMENT_OCID__/_Audit\" | sort by datetime desc"
-            },
-            "xAxis": {
-              "value": "rounddown(datetime, '1m')"
-            },
-            "yAxis": {
-              "value": "data.result"
-            }
-          }
-        ]
-      }
-    },
-    "layout": {
-      "height": 7,
-      "left": 0,
-      "minH": 3,
-      "minW": 4,
-      "top": 14,
-      "width": 12
-    }
-  },
-  {
     "id": "Monitoring_oci_scaffold_01",
     "title": "Object Storage — Object Count",
     "description": "ObjectCount metric from oci_objectstorage namespace, hourly sum",
@@ -150,11 +98,11 @@
     },
     "layout": {
       "height": 7,
-      "left": 12,
+      "left": 0,
       "minH": 6,
       "minW": 9,
       "top": 14,
-      "width": 12
+      "width": 24
     }
   }
 ]
