@@ -1,0 +1,108 @@
+[
+  {
+    "id": "Markdown_oci_scaffold_01",
+    "title": "OCI Scaffold",
+    "data": {
+      "dataSource": "Markdown",
+      "staticWidgetData": {
+        "text": "## OCI Scaffold Dashboard\n\nCompartment telemetry for integration testing.\n\n| Widget | Source |\n|--------|--------|\n| Audit Log Table | OCI Audit (`/_Audit`) |\n| VCN             | `oci_vcn VnicFromNetworkBytes` (tenancy scope) |"
+      }
+    },
+    "layout": {
+      "height": 5,
+      "left": 0,
+      "minH": 3,
+      "minW": 4,
+      "top": 0,
+      "width": 24
+    }
+  },
+  {
+    "id": "LoggingTable_oci_scaffold_01",
+    "title": "Audit Log — Recent Events",
+    "description": "OCI Audit service events in the compartment",
+    "type": "Table",
+    "data": {
+      "dataSource": "LoggingTable",
+      "api": {
+        "templateId": "loggingChart",
+        "type": "urlTemplate",
+        "variables": [
+          {
+            "fields": {
+              "value": [
+                "dashboard_log_table_datetime",
+                "dashboard_log_table_type",
+                "dashboard_log_table_data_message"
+              ]
+            },
+            "groupBy": {},
+            "mode": {
+              "value": "basic"
+            },
+            "regionId": {
+              "value": "__OCI_REGION__"
+            },
+            "savedSearchCompartmentId": {},
+            "savedSearchId": {},
+            "searchQuery": {
+              "value": "search \"__COMPARTMENT_OCID__/_Audit\" | sort by datetime desc"
+            },
+            "xAxis": {
+              "value": "rounddown(datetime, '${interval}')"
+            },
+            "yAxis": {
+              "value": null
+            }
+          }
+        ]
+      }
+    },
+    "layout": {
+      "height": 9,
+      "left": 0,
+      "minH": 9,
+      "minW": 10,
+      "top": 5,
+      "width": 24
+    }
+  },
+  {
+    "id": "Monitoring_oci_scaffold_01",
+    "title": "VCN — Byte Count",
+    "description": "",
+    "type": "Line",
+    "data": {
+      "dataSource": "Monitoring",
+      "api": {
+        "templateId": "monitoring",
+        "type": "urlTemplate",
+        "variables": [
+          {
+            "compartmentId": {
+              "value": "__TENANCY_OCID__"
+            },
+            "namespace": {
+              "value": "oci_vcn"
+            },
+            "query": {
+              "value": "VnicFromNetworkBytes[${interval}].mean()"
+            },
+            "regionId": {
+              "value": "__OCI_REGION__"
+            },
+            "resourceGroup": {}
+          }
+        ]
+      }
+    },
+    "layout": {
+      "height": 7,
+      "left": 0,
+      "minH": 6,
+      "minW": 9,
+      "top": 14,
+      "width": 24
+    }
+  }
+]

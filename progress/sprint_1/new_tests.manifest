@@ -1,0 +1,6 @@
+# Sprint 1 new tests — used by tests/run.sh --new-only
+
+# Integration tests
+integration:test_dashboard.sh:test_IT1_full_lifecycle
+integration:test_dashboard.sh:test_IT2_uri_adopt_existing
+integration:test_dashboard.sh:test_IT3_teardown_created_flag

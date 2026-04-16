@@ -35,6 +35,7 @@ cycle-bucket.sh         # Full cycle: all bucket modes (OCID, name, URI, extra a
 cycle-iam_access.sh     # Full cycle: IAM user + group + policy + API-key bucket test
 cycle-function.sh       # Full cycle: Fn app + deploy echo function + direct invoke test
 cycle-apigw.sh          # Full cycle: Fn app + function + API GW + Internet test
+cycle-dashboard.sh      # Full cycle: Dashboard group + Dashboard with widgets (logging, audit, metrics)
 ```
 
 ## Quick start
@@ -87,6 +88,19 @@ NAME_PREFIX=fn ./cycle-function.sh
 # API GW cycle (deploy src/fn/echo and test via public API GW endpoint)
 NAME_PREFIX=apigw ./cycle-apigw.sh
 
+# Dashboard cycle (dashboard group + dashboard with logging/audit/metrics widgets)
+NAME_PREFIX=dash ./cycle-dashboard.sh
+
+# Dashboard cycle — keep resources after cycle for Console inspection
+NAME_PREFIX=dash \
+DASHBOARD_URI=/oci_scaffold/test/group/dash \
+SKIP_TEARDOWN=true \
+./cycle-dashboard.sh
+
+echo "Open dashboard in OCI Console: $(jq -r '"https://cloud.oracle.com/dashboard/group/\(.dashboard_group.ocid)/dashboards/\(.dashboard.ocid)?region=\(.meta.region)"' state-dash.json)"
+
+NAME_PREFIX=dash ./do/teardown.sh
+
 # Customize API GW function/paths/methods (example)
 NAME_PREFIX=apigw \
 FN_FUNCTION_SRC_DIR=src/fn/echo \
@@ -113,6 +127,8 @@ APIGW_METHODS=POST \
 | Functions Application | yes | `cycle-function.sh`, `cycle-apigw.sh` |
 | Functions Function (`fnfunc`) | yes | `cycle-function.sh`, `cycle-apigw.sh` |
 | API Gateway (ApiGw + Deployment) | yes | `cycle-apigw.sh` |
+| Dashboard Group | yes | `cycle-dashboard.sh` |
+| Dashboard (with logging, audit, metrics widgets) | yes | `cycle-dashboard.sh` |
 
 ## Failure handling
 

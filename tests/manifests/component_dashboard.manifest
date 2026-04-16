@@ -1,0 +1,3 @@
+# tests/manifests/component_dashboard.manifest
+# OCI Dashboard scaffold component tests
+integration:test_dashboard.sh

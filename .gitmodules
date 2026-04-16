@@ -1,0 +1,4 @@
+[submodule "RUPStrikesBack"]
+	path = RUPStrikesBack
+	url = https://github.com/rstyczynski/RUPStrikesBack.git
+	branch = feature/version-2.0-sprint-backlog-management
