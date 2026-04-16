@@ -65,6 +65,7 @@ ensure-compartment.sh
 COMPARTMENT_OCID=$(_state_get '.compartment.ocid')
 export COMPARTMENT_OCID
 OCI_REGION=$(_oci_home_region)
+_state_set '.meta.region' "$OCI_REGION"
 _info "Compartment : $COMPARTMENT_OCID"
 _info "Region      : $OCI_REGION"
 
