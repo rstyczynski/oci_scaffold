@@ -54,14 +54,8 @@ export STATE_FILE
 TILES_FILE="${TILES_FILE:-${DIR}/resource/dashboard-widgets-example.json}"
 SKIP_TEARDOWN="${SKIP_TEARDOWN:-false}"
 
-echo ""
-echo "════════════════════════════════════════════════════════"
-echo " cycle-dashboard.sh | DASHBOARD_URI: $DASHBOARD_URI"
-echo " COMPARTMENT_PATH  : $COMPARTMENT_PATH"
-echo " GROUP             : $DASHBOARD_GROUP_NAME"
-echo " DASHBOARD         : $DASHBOARD_NAME"
-echo " TILES             : $TILES_FILE"
-echo "════════════════════════════════════════════════════════"
+_info "DASHBOARD_URI : $DASHBOARD_URI"
+_info "TILES         : $TILES_FILE"
 
 # ── Step 1: Ensure compartment ───────────────────────────────────────────────
 _summary_reset
