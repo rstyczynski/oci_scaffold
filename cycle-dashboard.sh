@@ -51,7 +51,7 @@ export NAME_PREFIX
 STATE_FILE="${PWD}/state-${NAME_PREFIX}.json"
 export STATE_FILE
 
-TILES_FILE="${TILES_FILE:-${DIR}/resource/dashboard-widgets-example.json}"
+TILES_FILE="${TILES_FILE:-${DIR}/etc/dashboard-widgets-example.json}"
 SKIP_TEARDOWN="${SKIP_TEARDOWN:-false}"
 
 _info "DASHBOARD_URI : $DASHBOARD_URI"

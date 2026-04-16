@@ -20,15 +20,17 @@
 #   3. .inputs.dashboard_group_ocid
 #   Required for Paths C and D; not required for Paths A and B.
 #
-# Widget definitions (optional, used only on creation):
+# Widget definitions (optional):
 #   .inputs.dashboard_tiles_b64   — base64-encoded JSON array of widget objects
 #   .inputs.dashboard_tiles_file  — path to JSON file containing widget array
-#   If neither is set: dashboard created with empty widgets list.
+#   If set and file exists: widgets are deployed on both CREATE and ADOPT (update-dashboard-v1).
+#   If not set: dashboard created with empty widgets; adopted dashboard is not touched.
 #
 # Outputs written to state:
 #   .dashboard.name      display name
 #   .dashboard.ocid      OCI dashboard OCID
 #   .dashboard.created   true (created) | false (adopted)
+#   .dashboard.deployed  true (widgets applied) | false (no tiles file provided)
 
 set -euo pipefail
 # shellcheck source=do/oci_scaffold.sh
@@ -154,6 +156,13 @@ if [ -z "$DASHBOARD_NAME" ]; then
   DASHBOARD_NAME="${NAME_PREFIX}-dashboard"
 fi
 
+# ── resolve widget definitions (used on both create and update) ───────────────
+WIDGETS_JSON=""
+TILES_FILE=$(_state_get_file dashboard_tiles)
+if [ -n "$TILES_FILE" ] && [ -f "$TILES_FILE" ]; then
+  WIDGETS_JSON=$(jq -c '.' "$TILES_FILE")
+fi
+
 #
 # Creation — requires GROUP_OCID
 #
@@ -163,30 +172,33 @@ if [ -z "$EXISTS" ]; then
     exit 1
   fi
 
-  # Resolve widget definitions
-  WIDGETS_JSON="[]"
-  TILES_FILE=$(_state_get_file dashboard_tiles)
-  if [ -n "$TILES_FILE" ] && [ -f "$TILES_FILE" ]; then
-    WIDGETS_JSON=$(jq -c '.' "$TILES_FILE")
-    _info "Using widget definitions from: $TILES_FILE"
-  else
-    _info "No widget definitions provided — creating dashboard with empty widgets"
-  fi
-
   DASHBOARD_OCID=$(oci dashboard-service dashboard create-dashboard-v1 \
     --dashboard-group-id "$GROUP_OCID" \
     --display-name "$DASHBOARD_NAME" \
     --description "OCI Scaffold dashboard: $DASHBOARD_NAME" \
-    --widgets "$WIDGETS_JSON" \
+    --widgets "${WIDGETS_JSON:-[]}" \
     --query 'data.id' --raw-output)
 
   _done "Dashboard created: $DASHBOARD_NAME"
   _state_set '.dashboard.created' true
   _state_set '.dashboard.deleted' false
+  _state_set '.dashboard.deployed' "$([ -n "$WIDGETS_JSON" ] && echo true || echo false)"
 else
   _existing "Dashboard: $DASHBOARD_NAME"
   _state_set '.dashboard.created' false
   _state_set '.dashboard.deleted' false
+
+  # Deploy widgets to existing dashboard if tiles file provided
+  if [ -n "$WIDGETS_JSON" ]; then
+    oci dashboard-service dashboard update-dashboard-v1 \
+      --dashboard-id "$DASHBOARD_OCID" \
+      --widgets "$WIDGETS_JSON" \
+      --force >/dev/null
+    _done "Dashboard widgets deployed: $DASHBOARD_NAME"
+    _state_set '.dashboard.deployed' true
+  else
+    _state_set '.dashboard.deployed' false
+  fi
 fi
 
 _state_set '.dashboard.name' "$DASHBOARD_NAME"
