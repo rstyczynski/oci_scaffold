@@ -92,7 +92,12 @@ NAME_PREFIX=apigw ./cycle-apigw.sh
 NAME_PREFIX=dash ./cycle-dashboard.sh
 
 # Dashboard cycle — keep resources after cycle for Console inspection
-NAME_PREFIX=dash SKIP_TEARDOWN=true ./cycle-dashboard.sh
+NAME_PREFIX=dash \
+DASHBOARD_URI=/oci_scaffold/test/group/dash \
+SKIP_TEARDOWN=true \
+./cycle-dashboard.sh
+# Dashboard URL is printed in the cycle output — open it in OCI Console to inspect widgets
+
 NAME_PREFIX=dash ./do/teardown.sh
 
 # Customize API GW function/paths/methods (example)
