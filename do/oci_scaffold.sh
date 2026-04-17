@@ -437,6 +437,9 @@ _add_route() {
 # Set COMPARTMENT_OCID and OCI_REGION from tenancy/home when not provided.
 _oci_default_compartment
 _oci_default_region
+# OCI CLI uses OCI_CLI_REGION (not OCI_REGION) to override the profile region.
+# Keep them in sync so all oci calls reach the correct endpoint.
+[ -n "${OCI_REGION:-}" ] && export OCI_CLI_REGION="${OCI_CLI_REGION:-$OCI_REGION}"
 if [ "${_OCI_SCAFFOLD_STATE_FILE_REPORTED:-}" != "$STATE_FILE" ]; then
   _info "STATE_FILE: $STATE_FILE"
   export _OCI_SCAFFOLD_STATE_FILE_REPORTED="$STATE_FILE"
