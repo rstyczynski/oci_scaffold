@@ -25,8 +25,10 @@ NAME_PREFIX=$(_state_get '.inputs.name_prefix')
 COMPUTE_OCID=$(_state_get '.compute.ocid')
 BV_SIZE_GB=$(_state_get '.inputs.bv_size_gb')
 BV_SIZE_GB="${BV_SIZE_GB:-50}"
+BV_VPUS_PER_GB=$(_state_get '.inputs.bv_vpus_per_gb')
 BV_ATTACH_TYPE=$(_state_get '.inputs.bv_attach_type')
 BV_ATTACH_TYPE="${BV_ATTACH_TYPE:-iscsi}"
+BV_DEVICE_PATH=$(_state_get '.inputs.bv_device_path')
 
 _require_env COMPARTMENT_OCID NAME_PREFIX COMPUTE_OCID
 
@@ -50,11 +52,16 @@ AD=$(oci compute instance get \
 
 if [ -z "$BV_OCID" ] || [ "$BV_OCID" = "null" ]; then
   # ── create volume ──────────────────────────────────────────────────────
+  volume_extra_args=()
+  if [ -n "${BV_VPUS_PER_GB:-}" ] && [ "$BV_VPUS_PER_GB" != "null" ]; then
+    volume_extra_args+=(--vpus-per-gb "$BV_VPUS_PER_GB")
+  fi
   BV_OCID=$(oci bv volume create \
     --compartment-id "$COMPARTMENT_OCID" \
     --availability-domain "$AD" \
     --display-name "$bv_name" \
     --size-in-gbs "$BV_SIZE_GB" \
+    "${volume_extra_args[@]}" \
     --wait-for-state AVAILABLE \
     --query 'data.id' --raw-output)
   _done "Block volume created: $BV_OCID (${BV_SIZE_GB} GB)"
@@ -78,18 +85,39 @@ if [ -z "$ATTACH_OCID" ] || [ "$ATTACH_OCID" = "null" ]; then
 fi
 
 if [ -z "$ATTACH_OCID" ] || [ "$ATTACH_OCID" = "null" ]; then
-  ATTACH_OCID=$(oci compute volume-attachment attach \
-    --instance-id "$COMPUTE_OCID" \
-    --type "$BV_ATTACH_TYPE" \
-    --volume-id "$BV_OCID" \
-    --wait-for-state ATTACHED \
-    --query 'data.id' --raw-output)
+  attach_extra_args=()
+  if [ -n "${BV_DEVICE_PATH:-}" ] && [ "$BV_DEVICE_PATH" != "null" ]; then
+    attach_extra_args+=(--device "$BV_DEVICE_PATH")
+  fi
+  if [ "$BV_ATTACH_TYPE" = "iscsi" ]; then
+    ATTACH_OCID=$(oci compute volume-attachment attach-iscsi-volume \
+      --instance-id "$COMPUTE_OCID" \
+      --volume-id "$BV_OCID" \
+      "${attach_extra_args[@]}" \
+      --wait-for-state ATTACHED \
+      --query 'data.id' --raw-output)
+  else
+    ATTACH_OCID=$(oci compute volume-attachment attach \
+      --instance-id "$COMPUTE_OCID" \
+      --type "$BV_ATTACH_TYPE" \
+      --volume-id "$BV_OCID" \
+      "${attach_extra_args[@]}" \
+      --wait-for-state ATTACHED \
+      --query 'data.id' --raw-output)
+  fi
   _done "Block volume attached ($BV_ATTACH_TYPE): $ATTACH_OCID"
 else
   _existing "Block volume attachment: $ATTACH_OCID"
 fi
 
 _state_set '.blockvolume.attachment_ocid' "$ATTACH_OCID"
+_state_set '.blockvolume.device_path' "${BV_DEVICE_PATH:-}"
+
+VOL_VPUS_PER_GB=$(oci bv volume get \
+  --volume-id "$BV_OCID" \
+  --query 'data."vpus-per-gb"' --raw-output 2>/dev/null) || true
+[ -n "${VOL_VPUS_PER_GB:-}" ] && [ "$VOL_VPUS_PER_GB" != "null" ] && \
+  _state_set '.blockvolume.vpus_per_gb' "$VOL_VPUS_PER_GB"
 
 # ── read iSCSI connection details ──────────────────────────────────────────
 if [ "$BV_ATTACH_TYPE" = "iscsi" ]; then
@@ -105,6 +133,11 @@ if [ "$BV_ATTACH_TYPE" = "iscsi" ]; then
   _state_set '.blockvolume.iqn'  "$IQN"
   _state_set '.blockvolume.ipv4' "$IPV4"
   _state_set '.blockvolume.port' "$PORT"
+  IS_MULTIPATH=$(oci compute volume-attachment get \
+    --volume-attachment-id "$ATTACH_OCID" \
+    --query 'data."is-multipath"' --raw-output 2>/dev/null) || true
+  [ -n "${IS_MULTIPATH:-}" ] && [ "$IS_MULTIPATH" != "null" ] && \
+    _state_set '.blockvolume.is_multipath' "$IS_MULTIPATH"
   _info "iSCSI: IQN=$IQN  target=$IPV4:$PORT"
 fi
 
