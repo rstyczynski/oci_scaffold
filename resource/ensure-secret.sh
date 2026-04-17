@@ -43,7 +43,7 @@ if [ "$DELETION_SCHEDULED" = "true" ] && [ -n "$PREV_OCID" ] && [ "$PREV_OCID" !
   fi
 fi
 
-secret_content=$(echo -n "$SECRET_VALUE" | base64)
+secret_content=$(printf '%s' "$SECRET_VALUE" | base64 | tr -d '\n')
 
 SECRET_OCID=$(oci vault secret list \
   --compartment-id "$COMPARTMENT_OCID" \
