@@ -74,13 +74,15 @@ NAME_PREFIX=iam ./cycle-iam_access.sh
 NAME_PREFIX=compute ./cycle-compute.sh
 
 # Compute instance cycle — all resources in /oci_scaffold (create compartment if missing)
-COMPARTMENT_PATH=/oci_scaffold NAME_PREFIX=compute ./cycle-compute.sh
+COMPARTMENT_PATH=/oci_scaffold \
+NAME_PREFIX=compute ./cycle-compute.sh
 
 # mitmproxy HTTPS inspection proxy cycle
 NAME_PREFIX=proxy ./cycle-proxy.sh
 
 # mitmproxy proxy cycle — all resources in /oci_scaffold (create compartment if missing)
-COMPARTMENT_PATH=/oci_scaffold NAME_PREFIX=proxy ./cycle-proxy.sh
+COMPARTMENT_PATH=/oci_scaffold \
+NAME_PREFIX=proxy ./cycle-proxy.sh
 
 # Fn function cycle (deploy src/fn/echo and test via direct invoke)
 NAME_PREFIX=fn ./cycle-function.sh
@@ -92,22 +94,20 @@ NAME_PREFIX=apigw ./cycle-apigw.sh
 NAME_PREFIX=dash ./cycle-dashboard.sh
 
 # Dashboard cycle — keep resources after cycle for Console inspection
-NAME_PREFIX=dash \
 DASHBOARD_URI=/oci_scaffold/test/group/dash \
 SKIP_TEARDOWN=true \
-./cycle-dashboard.sh
+NAME_PREFIX=dash ./cycle-dashboard.sh
 
 echo "Open dashboard in OCI Console: $(jq -r '"https://cloud.oracle.com/dashboard/group/\(.dashboard_group.ocid)/dashboards/\(.dashboard.ocid)?region=\(.meta.region)"' state-dash.json)"
 
 NAME_PREFIX=dash ./do/teardown.sh
 
 # Customize API GW function/paths/methods (example)
-NAME_PREFIX=apigw \
 FN_FUNCTION_SRC_DIR=src/fn/echo \
 APIGW_PATH_PREFIX=/oci_scaffold \
 APIGW_ROUTE_PATH=/echo \
 APIGW_METHODS=POST \
-./cycle-apigw.sh
+NAME_PREFIX=apigw ./cycle-apigw.sh
 ```
 
 ## Resource / cycle coverage
