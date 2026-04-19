@@ -22,6 +22,47 @@ fi
 source "$SCRIPT_DIR/../do/oci_scaffold.sh"
 source "$SCRIPT_DIR/../do/shared-metrics.sh"
 
+markdown_anchor() {
+  printf '%s' "$1" \
+    | tr '[:upper:]' '[:lower:]' \
+    | sed -E 's/[^a-z0-9 _-]//g; s/[[:space:]]+/-/g; s/-+/-/g; s/^-+//; s/-+$//'
+}
+
+metrics_preferred_min_raw() {
+  local query_json="$1"
+  local scale="$2"
+  local decimals="$3"
+  printf '%s\n' "$query_json" | jq -r '.data[0]."aggregated-datapoints"[]?.value' | \
+    awk -v s="$scale" -v d="$decimals" '
+      function shown_non_zero(v) {
+        return sprintf("%.*f", d, v / s) + 0 > 0
+      }
+      $1 > 0 {
+        if (fallback == "" || $1 < fallback) fallback = $1
+        if (shown_non_zero($1) && (preferred == "" || $1 < preferred)) preferred = $1
+      }
+      END {
+        if (preferred != "") print preferred
+        else if (fallback != "") print fallback
+      }'
+}
+
+metrics_format_min_value() {
+  local raw_min="$1"
+  local preferred_min="$2"
+  local scale="$3"
+  local decimals="$4"
+  local suffix="$5"
+  local base_fmt preferred_fmt
+  base_fmt=$(metrics_format_value "$raw_min" "$scale" "$decimals" "$suffix")
+  if [ -n "${raw_min:-}" ] && [ "$raw_min" != "null" ] && [ "${preferred_min:-}" != "" ] && awk -v v="$raw_min" 'BEGIN{exit !(v+0 == 0)}'; then
+    preferred_fmt=$(metrics_format_value "$preferred_min" "$scale" "$decimals" "$suffix")
+    printf '%s (%s)' "$base_fmt" "$preferred_fmt"
+  else
+    printf '%s' "$base_fmt"
+  fi
+}
+
 generate_html_report() {
   local raw_file="$1"
   local html_file="$2"
@@ -53,6 +94,29 @@ def fmt_value(value, scale, decimals, suffix):
 
 def slugify(text):
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-") or "section"
+
+
+def preferred_min(values, scale, decimals):
+    if not values:
+        return None
+    positives = [value for value in values if value > 0]
+    for value in sorted(positives):
+        if float(f"{value / scale:.{decimals}f}") > 0:
+            return value
+    if positives:
+        return min(positives)
+    return min(values)
+
+
+def min_display(values, scale, decimals, suffix):
+    if not values:
+        return "-"
+    raw_min = min(values)
+    base = fmt_value(raw_min, scale, decimals, suffix)
+    preferred = preferred_min(values, scale, decimals)
+    if raw_min == 0 and preferred is not None and preferred != raw_min:
+        return f"{base} ({fmt_value(preferred, scale, decimals, suffix)})"
+    return base
 
 
 def series_from_payload(row):
@@ -186,7 +250,7 @@ for class_name, resources in classes.items():
   </div>
   <div class="metric-meta">
     <span>Points: <strong>{len(series)}</strong></span>
-    <span>Min: <strong>{html.escape(fmt_value(min_v, scale, decimals, suffix))}</strong></span>
+    <span>Min: <strong>{html.escape(min_display(values, scale, decimals, suffix))}</strong></span>
     <span>Avg: <strong>{html.escape(fmt_value(avg_v, scale, decimals, suffix))}</strong></span>
     <span>Max: <strong>{html.escape(fmt_value(max_v, scale, decimals, suffix))}</strong></span>
     <span>Latest: <strong>{html.escape(fmt_value(latest_v, scale, decimals, suffix))}</strong></span>
@@ -548,19 +612,22 @@ while IFS= read -r class_name; do
   resources_json=$("$resource_script" metrics resources-json)
   [ "$(echo "$resources_json" | jq 'length')" -gt 0 ] || continue
 
+  class_heading="${class_name^}"
+  class_anchor=$(markdown_anchor "$class_heading")
   {
-    echo "- ${class_name^}"
+    echo "- [${class_heading}](#${class_anchor})"
   } >> "$tmp_toc"
   {
-    echo "## ${class_name^}"
+    echo "## ${class_heading}"
     echo ""
   } >> "$tmp_body"
 
   while IFS= read -r resource_row; do
     resource_name=$(echo "$resource_row" | jq -r '.name')
     resource_id=$(echo "$resource_row" | jq -r '.resourceId')
+    resource_anchor=$(markdown_anchor "$resource_name")
     {
-      echo "  - ${resource_name}"
+      echo "  - [${resource_name}](#${resource_anchor})"
     } >> "$tmp_toc"
     {
       echo "### ${resource_name}"
@@ -586,6 +653,8 @@ while IFS= read -r class_name; do
         --resolution "$METRICS_RESOLUTION" \
         --query-text "$query_text")
 
+      preferred_min_v=$(metrics_preferred_min_raw "$query_result" "$scale" "$decimals")
+
       summary_tsv=$(echo "$query_result" | jq -r '
         (.data[0]."aggregated-datapoints" // []) as $p
         | if ($p|length) == 0 then
@@ -601,7 +670,7 @@ while IFS= read -r class_name; do
           end')
 
       IFS=$'\t' read -r points min_v avg_v max_v latest_v <<< "$summary_tsv"
-      min_fmt=$(metrics_format_value "$min_v" "$scale" "$decimals" "$suffix")
+      min_fmt=$(metrics_format_min_value "$min_v" "$preferred_min_v" "$scale" "$decimals" "$suffix")
       avg_fmt=$(metrics_format_value "$avg_v" "$scale" "$decimals" "$suffix")
       max_fmt=$(metrics_format_value "$max_v" "$scale" "$decimals" "$suffix")
       latest_fmt=$(metrics_format_value "$latest_v" "$scale" "$decimals" "$suffix")
