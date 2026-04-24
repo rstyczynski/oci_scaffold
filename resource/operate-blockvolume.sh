@@ -12,7 +12,10 @@ subop="${2:-}"
 case "$op:$subop" in
   metrics:resources-json)
     if jq -e '.volumes | type=="object"' "$STATE_FILE" >/dev/null 2>&1; then
-      jq -c '[.volumes | to_entries[] | select(.value.ocid != null) | {name:.key,resourceId:.value.ocid}]' "$STATE_FILE"
+      jq -c '
+        ([.volumes | to_entries[] | select(.value.ocid != null) | {name:.key,resourceId:.value.ocid}]) +
+        (if .boot_volume.ocid != null then [{name:"boot_volume",resourceId:.boot_volume.ocid}] else [] end)
+      ' "$STATE_FILE"
     else
       bv_ocid=$(_state_get '.blockvolume.ocid')
       [ -n "${bv_ocid:-}" ] && [ "$bv_ocid" != "null" ] || { echo '[]'; exit 0; }
