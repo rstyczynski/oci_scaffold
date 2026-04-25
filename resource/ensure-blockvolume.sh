@@ -166,6 +166,9 @@ else
 fi
 
 _state_set '.blockvolume.ocid' "$BV_OCID"
+# CRITICAL: Add to creation_order IMMEDIATELY so teardown.sh can clean up
+# even if attachment fails later (e.g., multipath never enables).
+_state_append_once '.meta.creation_order' '"blockvolume"'
 
 # ── attach volume ──────────────────────────────────────────────────────────
 ATTACH_OCID=$(_state_get '.blockvolume.attachment_ocid')
@@ -327,5 +330,4 @@ if [ "$BV_ATTACH_TYPE" = "iscsi" ]; then
     _state_set '.blockvolume.is_multipath' "$IS_MULTIPATH"
   _info "iSCSI: IQN=$IQN  target=$IPV4:$PORT"
 fi
-
-_state_append_once '.meta.creation_order' '"blockvolume"'
+# Note: blockvolume added to creation_order earlier (after BV creation) for teardown safety
