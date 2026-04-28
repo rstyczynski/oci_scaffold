@@ -1,0 +1,14 @@
+  [INFO] COMPARTMENT_OCID defaulted to tenancy: ocid1.tenancy.oc1..aaaaaaaay2b2tvqcmqmndvcbz5kuptzuo7sp4vufarqfgoru7qojdgywb27a
+  [INFO] OCI_REGION defaulted to home region: eu-zurich-1
+  [INFO] STATE_FILE: /Users/rstyczynski/projects/oci_scaffold/state-itfss1-49038.json
+  [INFO] Deleting FSS file system: ocid1.filesystem.oc1.eu_zurich_1.aaaaaaaaaanz4qq3pjzgqllqojxwiotfouwxu5lsnfrwqljrfvqwiljr
+  [DONE] FSS file system deleted
+  [INFO] Deleting FSS mount target: ocid1.mounttarget.oc1.eu_zurich_1.aaaaaa4np2wnm4aapjzgqllqojxwiotfouwxu5lsnfrwqljrfvqwiljr
+  [DONE] FSS mount target deleted
+  [DONE] Subnet deleted: ocid1.subnet.oc1.eu-zurich-1.aaaaaaaaaxc4zaozgxuoqqgkx2icfihpfaqfnpfj3sczp4zxs6jnth7yuzma
+  [DONE] Security List deleted: ocid1.securitylist.oc1.eu-zurich-1.aaaaaaaawfdvko7hc22djtq3w56b3kc4admumxnor7gpfzwziozjhti2asrq
+  [DONE] Route Table deleted: ocid1.routetable.oc1.eu-zurich-1.aaaaaaaasgbikv67rs26itoytonlcjkr25ag7t5qu4etkwsvg4id6e2lpc5a
+  [DONE] Service Gateway deleted: ocid1.servicegateway.oc1.eu-zurich-1.aaaaaaaa2od6kdek2azm3qctknl2ywmfypgi4uecc2ixhfao5q5iukg4itgq
+  [INFO] VCN deleted: ocid1.vcn.oc1.eu-zurich-1.amaaaaaaknhfuyiasdsz2reuvnmsytcood5afjhzmwz6uf6acskfmcgu4r2q
+  [INFO] Compartment: nothing to delete
+  [INFO] State archived: /Users/rstyczynski/projects/oci_scaffold/state-itfss1-49038.deleted-20260427T142403.json

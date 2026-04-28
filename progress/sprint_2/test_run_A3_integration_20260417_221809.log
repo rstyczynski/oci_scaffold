@@ -1,0 +1,132 @@
+=== RUN integration:test_blockvolume.sh:test_IT1_full_lifecycle ===
+
+=== IT-1: full lifecycle via cycle-blockvolume.sh ===
+  [INFO] COMPARTMENT_OCID defaulted to tenancy: ocid1.tenancy.oc1..aaaaaaaay2b2tvqcmqmndvcbz5kuptzuo7sp4vufarqfgoru7qojdgywb27a
+  [INFO] OCI_REGION defaulted to home region: eu-zurich-1
+  [INFO] STATE_FILE: /Users/rstyczynski/projects/oci_scaffold/state-itbv1-17275.json
+  [INFO] === Step 1: ensure compartment /oci_scaffold ===
+  [EXISTING] Compartment '/oci_scaffold': ocid1.compartment.oc1..aaaaaaaaxsyob4rojty3iqy64tkveltkqbmaos2ngb2ncsvvvexs42bxxqha
+  [INFO] Compartment ready: /oci_scaffold -> ocid1.compartment.oc1..aaaaaaaaxsyob4rojty3iqy64tkveltkqbmaos2ngb2ncsvvvexs42bxxqha
+  [INFO] === Step 2: create compute stack ===
+  [INFO] SSH key generated: /Users/rstyczynski/projects/oci_scaffold/state-itbv1-17275-key
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] VCN created (10.0.0.0/16): ocid1.vcn.oc1.eu-zurich-1.amaaaaaaknhfuyiaybeko6q6oe3a5sju5mgf4qpkvgvvuyir6tna2zguxoqq
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Security List created (0.0.0.0/0 all egress, 0.0.0.0/0 6 ingress): ocid1.securitylist.oc1.eu-zurich-1.aaaaaaaaslagduuacvkmn5vc2cskbeqfoukvrax5g3pvpc46y3f2urwf7s6q
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Internet Gateway created: ocid1.internetgateway.oc1.eu-zurich-1.aaaaaaaamvonrktpfoqpwqik53oiwsf3dzktsgqt4knkbyj35oe75hwygmxa
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Route Table created: ocid1.routetable.oc1.eu-zurich-1.aaaaaaaapajcuyjpuiznwk7db33cdcggll63kxcwzls42af5h62qvaggcuha
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Subnet created (10.0.0.0/24, public): ocid1.subnet.oc1.eu-zurich-1.aaaaaaaa6gi577gtskoop5vzxmgsnjmuokcktm75lbnstlgcebl6eijx67iq
+[2K  [WAIT] Compute instance provisioning … 0s (state: PROVISIONING)[2K  [WAIT] Compute instance provisioning … 5s (state: PROVISIONING)[2K  [WAIT] Compute instance provisioning … 10s (state: PROVISIONING)[2K  [WAIT] Compute instance provisioning … 15s (state: PROVISIONING)[2K  [WAIT] Compute instance provisioning … 20s (state: PROVISIONING)[2K  [WAIT] Compute instance provisioning … 25s (state: RUNNING)
+  [DONE] Compute instance created (VM.Standard.E4.Flex, 1 OCPU, 4 GB): ocid1.instance.oc1.eu-zurich-1.an5heljrknhfuyicz5moxcma7xqttuyotczp26fyncg7q3jdj7eytuetlrra
+  [INFO] Compute ready: ocid1.instance.oc1.eu-zurich-1.an5heljrknhfuyicz5moxcma7xqttuyotczp26fyncg7q3jdj7eytuetlrra
+  [INFO] === Step 3: create and attach block volume ===
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Block volume created (50 GB): ocid1.volume.oc1.eu-zurich-1.ab5heljrigkepvfc4ks5nkfq5bjoruelpx3duwhn4am3hhdojgkukl3qtgfq
+Action completed. Waiting until the resource has entered state: ('ATTACHED',)
+  [DONE] Block volume attached (iscsi): ocid1.volumeattachment.oc1.eu-zurich-1.an5heljrknhfuyickluikdcwoxdgnqjcanvku7kfe6bv57zcjqydakudjwea
+  [INFO] iSCSI: IQN=iqn.2015-12.com.oracleiaas:905578c4-da9e-4e2c-8e8c-2a3548959f39 target=169.254.2.2:3260
+  [INFO] Block volume ready: ocid1.volume.oc1.eu-zurich-1.ab5heljrigkepvfc4ks5nkfq5bjoruelpx3duwhn4am3hhdojgkukl3qtgfq
+  [INFO] Attachment ready: ocid1.volumeattachment.oc1.eu-zurich-1.an5heljrknhfuyickluikdcwoxdgnqjcanvku7kfe6bv57zcjqydakudjwea
+  [INFO] iSCSI target: 169.254.2.2:3260
+  [INFO] === Step 4: adopt block volume by OCID in fresh state ===
+  [INFO] STATE_FILE: /Users/rstyczynski/projects/oci_scaffold/state-itbv1-17275-adopt.json
+  [OK]   Adopted block volume by OCID: ocid1.volume.oc1.eu-zurich-1.ab5heljrigkepvfc4ks5nkfq5bjoruelpx3duwhn4am3hhdojgkukl3qtgfq
+  [EXISTING] Block volume attachment: ocid1.volumeattachment.oc1.eu-zurich-1.an5heljrknhfuyickluikdcwoxdgnqjcanvku7kfe6bv57zcjqydakudjwea
+  [INFO] iSCSI: IQN=iqn.2015-12.com.oracleiaas:905578c4-da9e-4e2c-8e8c-2a3548959f39 target=169.254.2.2:3260
+  [INFO] Adopted block volume created=false attachment=ocid1.volumeattachment.oc1.eu-zurich-1.an5heljrknhfuyickluikdcwoxdgnqjcanvku7kfe6bv57zcjqydakudjwea
+
+Summary: 0 CREATED, 1 EXISTING, 1 TESTED, 0 FAILED
+  [INFO] === Teardown ===
+  [INFO] Block volume attachment: nothing to detach
+  [INFO] Block volume: nothing to delete
+  [INFO] State archived: /Users/rstyczynski/projects/oci_scaffold/state-itbv1-17275-adopt.deleted-20260417T221950.json
+  [INFO] STATE_FILE: /Users/rstyczynski/projects/oci_scaffold/state-itbv1-17275.json
+  [DONE] Block volume detached: ocid1.volumeattachment.oc1.eu-zurich-1.an5heljrknhfuyickluikdcwoxdgnqjcanvku7kfe6bv57zcjqydakudjwea
+  [DONE] Block volume deleted: ocid1.volume.oc1.eu-zurich-1.ab5heljrigkepvfc4ks5nkfq5bjoruelpx3duwhn4am3hhdojgkukl3qtgfq
+  [DONE] Compute instance deleted: ocid1.instance.oc1.eu-zurich-1.an5heljrknhfuyicz5moxcma7xqttuyotczp26fyncg7q3jdj7eytuetlrra
+  [DONE] Subnet deleted: ocid1.subnet.oc1.eu-zurich-1.aaaaaaaa6gi577gtskoop5vzxmgsnjmuokcktm75lbnstlgcebl6eijx67iq
+  [DONE] Route Table deleted: ocid1.routetable.oc1.eu-zurich-1.aaaaaaaapajcuyjpuiznwk7db33cdcggll63kxcwzls42af5h62qvaggcuha
+  [DONE] Internet Gateway deleted: ocid1.internetgateway.oc1.eu-zurich-1.aaaaaaaamvonrktpfoqpwqik53oiwsf3dzktsgqt4knkbyj35oe75hwygmxa
+  [DONE] Security List deleted: ocid1.securitylist.oc1.eu-zurich-1.aaaaaaaaslagduuacvkmn5vc2cskbeqfoukvrax5g3pvpc46y3f2urwf7s6q
+  [INFO] VCN deleted: ocid1.vcn.oc1.eu-zurich-1.amaaaaaaknhfuyiaybeko6q6oe3a5sju5mgf4qpkvgvvuyir6tna2zguxoqq
+  [INFO] Compartment: nothing to delete
+  [INFO] State archived: /Users/rstyczynski/projects/oci_scaffold/state-itbv1-17275.deleted-20260417T222130.json
+  PASS: IT-1: lifecycle completed and archived state marks deleted volume
+
+Results: 1 passed, 0 failed
+=== RUN integration:test_blockvolume.sh:test_IT2_adopt_by_ocid ===
+
+=== IT-2: adopt block volume by OCID ===
+  [INFO] COMPARTMENT_OCID defaulted to tenancy: ocid1.tenancy.oc1..aaaaaaaay2b2tvqcmqmndvcbz5kuptzuo7sp4vufarqfgoru7qojdgywb27a
+  [INFO] OCI_REGION defaulted to home region: eu-zurich-1
+  [INFO] STATE_FILE: /Users/rstyczynski/projects/oci_scaffold/state-itbv2-19056.json
+  [INFO] === Step 1: ensure compartment /oci_scaffold ===
+  [EXISTING] Compartment '/oci_scaffold': ocid1.compartment.oc1..aaaaaaaaxsyob4rojty3iqy64tkveltkqbmaos2ngb2ncsvvvexs42bxxqha
+  [INFO] Compartment ready: /oci_scaffold -> ocid1.compartment.oc1..aaaaaaaaxsyob4rojty3iqy64tkveltkqbmaos2ngb2ncsvvvexs42bxxqha
+  [INFO] === Step 2: create compute stack ===
+  [INFO] SSH key generated: /Users/rstyczynski/projects/oci_scaffold/state-itbv2-19056-key
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] VCN created (10.0.0.0/16): ocid1.vcn.oc1.eu-zurich-1.amaaaaaaknhfuyiafnhzj2mndejs7bwiz4fzgpkw2nfroprniwrcvg2kidvq
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Security List created (0.0.0.0/0 all egress, 0.0.0.0/0 6 ingress): ocid1.securitylist.oc1.eu-zurich-1.aaaaaaaa7cm5j63ims7jyl2m2flpwmtvs2mlzbzv2fcdwulb6pggo2redzvq
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Internet Gateway created: ocid1.internetgateway.oc1.eu-zurich-1.aaaaaaaa4ztbpay4txdc4y75dw6gjvqqzxydh5lshewd22src6pd3ii337oa
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Route Table created: ocid1.routetable.oc1.eu-zurich-1.aaaaaaaa2obx363xkr6jpeiw5jd5ojzw2xd3u2ujvwvuqirygycrvy63pgla
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Subnet created (10.0.0.0/24, public): ocid1.subnet.oc1.eu-zurich-1.aaaaaaaa6tmtoj3hf7orrgnrgnwzrqujputv3bxz2b3mbyxo4oreehcmd5tq
+[2K  [WAIT] Compute instance provisioning … 0s (state: PROVISIONING)[2K  [WAIT] Compute instance provisioning … 5s (state: PROVISIONING)[2K  [WAIT] Compute instance provisioning … 10s (state: PROVISIONING)[2K  [WAIT] Compute instance provisioning … 15s (state: PROVISIONING)[2K  [WAIT] Compute instance provisioning … 20s (state: PROVISIONING)[2K  [WAIT] Compute instance provisioning … 25s (state: RUNNING)
+  [DONE] Compute instance created (VM.Standard.E4.Flex, 1 OCPU, 4 GB): ocid1.instance.oc1.eu-zurich-1.an5heljrknhfuyicfnqtufawomivcwirnaa5e3knsmriqexsrcirfpntns5q
+  [INFO] Compute ready: ocid1.instance.oc1.eu-zurich-1.an5heljrknhfuyicfnqtufawomivcwirnaa5e3knsmriqexsrcirfpntns5q
+  [INFO] === Step 3: create and attach block volume ===
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Block volume created (50 GB): ocid1.volume.oc1.eu-zurich-1.ab5heljraubt6lnrzo4jb56ovwxfpup5wt2mma425g45p7mncz35zw2yayya
+Action completed. Waiting until the resource has entered state: ('ATTACHED',)
+  [DONE] Block volume attached (iscsi): ocid1.volumeattachment.oc1.eu-zurich-1.an5heljrknhfuyic3djiqdvr32xp3xmwnpwbflfqxtfx2abhgsuq5ditfttq
+  [INFO] iSCSI: IQN=iqn.2015-12.com.oracleiaas:399138f2-7abb-4d2c-947a-6f8bb98bb4cc target=169.254.2.2:3260
+  [INFO] Block volume ready: ocid1.volume.oc1.eu-zurich-1.ab5heljraubt6lnrzo4jb56ovwxfpup5wt2mma425g45p7mncz35zw2yayya
+  [INFO] Attachment ready: ocid1.volumeattachment.oc1.eu-zurich-1.an5heljrknhfuyic3djiqdvr32xp3xmwnpwbflfqxtfx2abhgsuq5ditfttq
+  [INFO] iSCSI target: 169.254.2.2:3260
+  [INFO] === Step 4: adopt block volume by OCID in fresh state ===
+  [INFO] STATE_FILE: /Users/rstyczynski/projects/oci_scaffold/state-itbv2-19056-adopt.json
+  [OK]   Adopted block volume by OCID: ocid1.volume.oc1.eu-zurich-1.ab5heljraubt6lnrzo4jb56ovwxfpup5wt2mma425g45p7mncz35zw2yayya
+  [EXISTING] Block volume attachment: ocid1.volumeattachment.oc1.eu-zurich-1.an5heljrknhfuyic3djiqdvr32xp3xmwnpwbflfqxtfx2abhgsuq5ditfttq
+  [INFO] iSCSI: IQN=iqn.2015-12.com.oracleiaas:399138f2-7abb-4d2c-947a-6f8bb98bb4cc target=169.254.2.2:3260
+  [INFO] Adopted block volume created=false attachment=ocid1.volumeattachment.oc1.eu-zurich-1.an5heljrknhfuyic3djiqdvr32xp3xmwnpwbflfqxtfx2abhgsuq5ditfttq
+
+Summary: 0 CREATED, 1 EXISTING, 1 TESTED, 0 FAILED
+  [INFO] === Teardown ===
+  [INFO] Skipping teardown. Re-run with: NAME_PREFIX=itbv2-19056 ./do/teardown.sh
+  [INFO] COMPARTMENT_OCID defaulted to tenancy: ocid1.tenancy.oc1..aaaaaaaay2b2tvqcmqmndvcbz5kuptzuo7sp4vufarqfgoru7qojdgywb27a
+  [INFO] OCI_REGION defaulted to home region: eu-zurich-1
+  [INFO] STATE_FILE: /Users/rstyczynski/projects/oci_scaffold/state-itbv2-19056-adopt.json
+  [OK]   Adopted block volume by OCID: ocid1.volume.oc1.eu-zurich-1.ab5heljraubt6lnrzo4jb56ovwxfpup5wt2mma425g45p7mncz35zw2yayya
+  [EXISTING] Block volume attachment: ocid1.volumeattachment.oc1.eu-zurich-1.an5heljrknhfuyic3djiqdvr32xp3xmwnpwbflfqxtfx2abhgsuq5ditfttq
+  [INFO] iSCSI: IQN=iqn.2015-12.com.oracleiaas:399138f2-7abb-4d2c-947a-6f8bb98bb4cc target=169.254.2.2:3260
+  PASS: IT-2: adopt-by-OCID recorded created=false and reused attachment
+  [INFO] COMPARTMENT_OCID defaulted to tenancy: ocid1.tenancy.oc1..aaaaaaaay2b2tvqcmqmndvcbz5kuptzuo7sp4vufarqfgoru7qojdgywb27a
+  [INFO] OCI_REGION defaulted to home region: eu-zurich-1
+  [INFO] STATE_FILE: /Users/rstyczynski/projects/oci_scaffold/state-itbv2-19056-adopt.json
+  [INFO] Block volume attachment: nothing to detach
+  [INFO] Block volume: nothing to delete
+  [INFO] State archived: /Users/rstyczynski/projects/oci_scaffold/state-itbv2-19056-adopt.deleted-20260417T222320.json
+  [INFO] COMPARTMENT_OCID defaulted to tenancy: ocid1.tenancy.oc1..aaaaaaaay2b2tvqcmqmndvcbz5kuptzuo7sp4vufarqfgoru7qojdgywb27a
+  [INFO] OCI_REGION defaulted to home region: eu-zurich-1
+  [INFO] STATE_FILE: /Users/rstyczynski/projects/oci_scaffold/state-itbv2-19056.json
+  [DONE] Block volume detached: ocid1.volumeattachment.oc1.eu-zurich-1.an5heljrknhfuyic3djiqdvr32xp3xmwnpwbflfqxtfx2abhgsuq5ditfttq
+  [DONE] Block volume deleted: ocid1.volume.oc1.eu-zurich-1.ab5heljraubt6lnrzo4jb56ovwxfpup5wt2mma425g45p7mncz35zw2yayya
+  [DONE] Compute instance deleted: ocid1.instance.oc1.eu-zurich-1.an5heljrknhfuyicfnqtufawomivcwirnaa5e3knsmriqexsrcirfpntns5q
+  [DONE] Subnet deleted: ocid1.subnet.oc1.eu-zurich-1.aaaaaaaa6tmtoj3hf7orrgnrgnwzrqujputv3bxz2b3mbyxo4oreehcmd5tq
+  [DONE] Route Table deleted: ocid1.routetable.oc1.eu-zurich-1.aaaaaaaa2obx363xkr6jpeiw5jd5ojzw2xd3u2ujvwvuqirygycrvy63pgla
+  [DONE] Internet Gateway deleted: ocid1.internetgateway.oc1.eu-zurich-1.aaaaaaaa4ztbpay4txdc4y75dw6gjvqqzxydh5lshewd22src6pd3ii337oa
+  [DONE] Security List deleted: ocid1.securitylist.oc1.eu-zurich-1.aaaaaaaa7cm5j63ims7jyl2m2flpwmtvs2mlzbzv2fcdwulb6pggo2redzvq
+  [INFO] VCN deleted: ocid1.vcn.oc1.eu-zurich-1.amaaaaaaknhfuyiafnhzj2mndejs7bwiz4fzgpkw2nfroprniwrcvg2kidvq
+  [INFO] Compartment: nothing to delete
+  [INFO] State archived: /Users/rstyczynski/projects/oci_scaffold/state-itbv2-19056.deleted-20260417T222514.json
+
+Results: 1 passed, 0 failed
+
+Results: 2 passed, 0 failed

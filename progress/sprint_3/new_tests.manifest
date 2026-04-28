@@ -1,0 +1,5 @@
+# Sprint 3 new tests — used by tests/run.sh --new-only
+
+# Integration tests
+integration:test_fss.sh:test_IT1_full_lifecycle
+

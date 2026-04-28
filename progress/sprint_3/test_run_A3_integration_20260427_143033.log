@@ -1,0 +1,51 @@
+=== RUN integration:test_fss.sh:test_IT1_full_lifecycle ===
+
+=== IT-1: full lifecycle via cycle-fss.sh ===
+  [INFO] COMPARTMENT_OCID defaulted to tenancy: ocid1.tenancy.oc1..aaaaaaaay2b2tvqcmqmndvcbz5kuptzuo7sp4vufarqfgoru7qojdgywb27a
+  [INFO] OCI_REGION defaulted to home region: eu-zurich-1
+  [INFO] STATE_FILE: /Users/rstyczynski/projects/oci_scaffold/state-itfss1-52871.json
+  [INFO] === Step 1: ensure compartment (optional) ===
+  [EXISTING] Compartment '/oci_scaffold': ocid1.compartment.oc1..aaaaaaaaxsyob4rojty3iqy64tkveltkqbmaos2ngb2ncsvvvexs42bxxqha
+  [EXISTING] Compartment '/oci_scaffold/test': ocid1.compartment.oc1..aaaaaaaafmq4oovbsusfafdmowob5cf2zyl43brk2o3epwrjox3yzzphwstq
+  [INFO] === Step 2: ensure network stack (or adopt subnet) ===
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] VCN created (10.0.0.0/16): ocid1.vcn.oc1.eu-zurich-1.amaaaaaaknhfuyiaquq7ksebkqkhwrzvhq3yu3piuxodlx5hohs3jn6bqgda
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Service Gateway created: ocid1.servicegateway.oc1.eu-zurich-1.aaaaaaaab2wjfiooid52z65i4j6tvaf5hazv3s7zgebpgzynttpfq4l472aa
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Route Table created: ocid1.routetable.oc1.eu-zurich-1.aaaaaaaag2yhwhsurr62roriqwx4t6rek62a7iqfjxrlolblsn3ekxl6fbxa
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Security List created (0.0.0.0/0 all egress, 10.0.0.0/16 6 ingress): ocid1.securitylist.oc1.eu-zurich-1.aaaaaaaaxupnrhyzitubvmlswnutvvwhrkxaacvy2whetrd3stax6g7gnzza
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Subnet created (10.0.0.0/24, private): ocid1.subnet.oc1.eu-zurich-1.aaaaaaaaqexs4aek4hpernidhoaalzilceznome677jwva4c5dcs2uxlzyla
+  [INFO] === Step 3: ensure FSS mount target ===
+Action completed. Waiting until the resource has entered state: ('ACTIVE', 'FAILED')
+  [DONE] FSS mount target created: itfss1-52871-fss-mt
+  [INFO] === Step 4: ensure FSS file system ===
+Action completed. Waiting until the resource has entered state: ('ACTIVE', 'FAILED')
+  [DONE] FSS file system created: itfss1-52871-fss-fs
+  [INFO] === Step 5: ensure FSS export ===
+Action completed. Waiting until the resource has entered state: ('ACTIVE',)
+  [DONE] FSS export created: /itfss1-52871-fss
+  [INFO] === Step 6: validate NFS reachability via Network Path Analyzer (TCP/2049) ===
+  [INFO] Path Analyzer: fss-nfs(10.0.0.73):2049/tcp (timeout 180s)...
+  [OK]   Path (fss-nfs(10.0.0.73):2049/tcp): reachable
+
+Summary: 8 CREATED, 2 EXISTING, 1 TESTED, 0 FAILED
+  [INFO] === Teardown ===
+  [INFO] Deleting FSS export: ocid1.export.oc1.eu_zurich_1.aaaaaa4np2wnm4jqpjzgqllqojxwiotfouwxu5lsnfrwqljrfvqwiljr
+Action completed. Waiting until the resource has entered state: ('DELETED',)
+  [DONE] FSS export deleted
+  [INFO] Deleting FSS file system: ocid1.filesystem.oc1.eu_zurich_1.aaaaaaaaaanz4rmypjzgqllqojxwiotfouwxu5lsnfrwqljrfvqwiljr
+Action completed. Waiting until the resource has entered state: ('DELETED',)
+  [DONE] FSS file system deleted
+  [INFO] Deleting FSS mount target: ocid1.mounttarget.oc1.eu_zurich_1.aaaaaa4np2wnm4bkpjzgqllqojxwiotfouwxu5lsnfrwqljrfvqwiljr
+Action completed. Waiting until the resource has entered state: ('DELETED',)
+  [DONE] FSS mount target deleted
+  [INFO] Archived deleted state: /Users/rstyczynski/projects/oci_scaffold/state-itfss1-52871.deleted-20260427_143309.json
+  PASS: IT-1: lifecycle completed and archived state marks deleted=true
+  FAIL: IT-1: expected .path_analyzer[] with result=SUCCEEDED (FSS NFS reachability check missing or failed)
+
+Results: 1 passed, 1 failed
+
+Results: 0 passed, 1 failed

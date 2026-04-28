@@ -1,0 +1,45 @@
+=== RUN integration:test_blockvolume.sh:test_IT1_full_lifecycle ===
+
+=== IT-1: full lifecycle via cycle-blockvolume.sh ===
+  FAIL: IT-1: cycle-blockvolume.sh exited 1
+  [INFO] COMPARTMENT_OCID defaulted to tenancy: ocid1.tenancy.oc1..aaaaaaaay2b2tvqcmqmndvcbz5kuptzuo7sp4vufarqfgoru7qojdgywb27a
+  [INFO] OCI_REGION defaulted to home region: eu-zurich-1
+  [INFO] STATE_FILE: /Users/rstyczynski/projects/oci_scaffold/state-itbv1-23243.json
+  [INFO] === Step 1: ensure compartment /oci_scaffold ===
+  [EXISTING] Compartment '/oci_scaffold': ocid1.compartment.oc1..aaaaaaaaxsyob4rojty3iqy64tkveltkqbmaos2ngb2ncsvvvexs42bxxqha
+  [INFO] Compartment ready: /oci_scaffold -> ocid1.compartment.oc1..aaaaaaaaxsyob4rojty3iqy64tkveltkqbmaos2ngb2ncsvvvexs42bxxqha
+  [INFO] === Step 2: create compute stack ===
+  [INFO] SSH key generated: /Users/rstyczynski/projects/oci_scaffold/state-itbv1-23243-key
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] VCN created (10.0.0.0/16): ocid1.vcn.oc1.eu-zurich-1.amaaaaaaknhfuyiaoyho6i4ngb2jmfmyyjxyx2mm3ltsv2gimyv4dngeepja
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Security List created (0.0.0.0/0 all egress, 0.0.0.0/0 6 ingress): ocid1.securitylist.oc1.eu-zurich-1.aaaaaaaax6cujo7vgeapozuzskqmj4wlh4cefadp3mpozirvgr2xzmheqkoa
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Internet Gateway created: ocid1.internetgateway.oc1.eu-zurich-1.aaaaaaaarhkccw5cg2btcshxg2cab556mycgp7ftmnkvsmjuspl3cl6joiya
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Route Table created: ocid1.routetable.oc1.eu-zurich-1.aaaaaaaamqtnbok7vr4reztejzc2tavwj4lmuxb6d2r7qq6agj3iytxh6vwq
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Subnet created (10.0.0.0/24, public): ocid1.subnet.oc1.eu-zurich-1.aaaaaaaaaeljmwjlimqohf2djwhkdm2wfzrp33fvwjmsmryfkar7d4yepiba
+[2K  [WAIT] Compute instance provisioning … 0s (state: PROVISIONING)[2K  [WAIT] Compute instance provisioning … 5s (state: PROVISIONING)[2K  [WAIT] Compute instance provisioning … 10s (state: PROVISIONING)[2K  [WAIT] Compute instance provisioning … 15s (state: PROVISIONING)[2K  [WAIT] Compute instance provisioning … 20s (state: PROVISIONING)[2K  [WAIT] Compute instance provisioning … 25s (state: RUNNING)
+  [DONE] Compute instance created (VM.Standard.E4.Flex, 1 OCPU, 4 GB): ocid1.instance.oc1.eu-zurich-1.an5heljrknhfuyicqhrl4pol5hji5dxrsntjziew6eg7wgjx7pnjai4j3fda
+  [INFO] Compute ready: ocid1.instance.oc1.eu-zurich-1.an5heljrknhfuyicqhrl4pol5hji5dxrsntjziew6eg7wgjx7pnjai4j3fda
+[2K  [WAIT] Waiting for SSH 140.86.212.190 … 0s[2K  [WAIT] Waiting for SSH 140.86.212.190 … 5s[2K  [WAIT] Waiting for SSH 140.86.212.190 … 10s[2K  [WAIT] Waiting for SSH 140.86.212.190 … 15s[2K  [WAIT] Waiting for SSH 140.86.212.190 … 20s
+  [INFO] SSH ready
+  [INFO] Waiting for cloud-init to complete ...
+[2K  [WAIT] cloud-init … 0s (status: status: running)[2K  [WAIT] cloud-init … 10s (status: status: done)
+  [INFO] === Step 3: create and attach block volume ===
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Block volume created (50 GB): ocid1.volume.oc1.eu-zurich-1.ab5heljr6h7ltyqest3vv72sr2e53hzrd36a3mjzbovsrf3ab5vgpzroxrhq
+Action completed. Waiting until the resource has entered state: ('ATTACHED',)
+  [DONE] Block volume attached (iscsi): ocid1.volumeattachment.oc1.eu-zurich-1.an5heljrknhfuyicbcc3avadtcj7koaeuhoklzl4ktdg7dnpoczolwsjb3hq
+  [INFO] iSCSI: IQN=iqn.2015-12.com.oracleiaas:39745a0d-02e2-4838-a477-3f18a14a6c91 target=169.254.2.2:3260
+  [INFO] Block volume ready: ocid1.volume.oc1.eu-zurich-1.ab5heljr6h7ltyqest3vv72sr2e53hzrd36a3mjzbovsrf3ab5vgpzroxrhq
+  [INFO] Attachment ready: ocid1.volumeattachment.oc1.eu-zurich-1.an5heljrknhfuyicbcc3avadtcj7koaeuhoklzl4ktdg7dnpoczolwsjb3hq
+  [INFO] iSCSI target: 169.254.2.2:3260
+  [INFO] === Step 4: run 60-second fio proof test ===
+  [FAIL] cycle-blockvolume.sh failed (exit 1) at line 101: ssh -i "${PWD}/state-${BASE_PREFIX}-key" -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o BatchMode=yes "opc@${COMPUTE_PUBLIC_IP}" "$@" 2> /dev/null
+  [FAIL] State file: /Users/rstyczynski/projects/oci_scaffold/state-itbv1-23243.json
+  [FAIL] cycle-blockvolume.sh failed (exit 1) at line 168: tee "$FIO_JSON_FILE"
+  [FAIL] State file: /Users/rstyczynski/projects/oci_scaffold/state-itbv1-23243.json
+
+Results: 0 passed, 1 failed

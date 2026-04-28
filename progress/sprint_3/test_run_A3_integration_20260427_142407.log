@@ -1,0 +1,34 @@
+=== RUN integration:test_fss.sh:test_IT1_full_lifecycle ===
+
+=== IT-1: full lifecycle via cycle-fss.sh ===
+  [INFO] COMPARTMENT_OCID defaulted to tenancy: ocid1.tenancy.oc1..aaaaaaaay2b2tvqcmqmndvcbz5kuptzuo7sp4vufarqfgoru7qojdgywb27a
+  [INFO] OCI_REGION defaulted to home region: eu-zurich-1
+  [INFO] STATE_FILE: /Users/rstyczynski/projects/oci_scaffold/state-itfss1-50522.json
+  [INFO] === Step 1: ensure compartment (optional) ===
+  [EXISTING] Compartment '/oci_scaffold': ocid1.compartment.oc1..aaaaaaaaxsyob4rojty3iqy64tkveltkqbmaos2ngb2ncsvvvexs42bxxqha
+  [EXISTING] Compartment '/oci_scaffold/test': ocid1.compartment.oc1..aaaaaaaafmq4oovbsusfafdmowob5cf2zyl43brk2o3epwrjox3yzzphwstq
+  [INFO] === Step 2: ensure network stack (or adopt subnet) ===
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] VCN created (10.0.0.0/16): ocid1.vcn.oc1.eu-zurich-1.amaaaaaaknhfuyiapjb2qtogy72nf4iyon6c4qez7hw6an4jne2vxk4apf7a
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Service Gateway created: ocid1.servicegateway.oc1.eu-zurich-1.aaaaaaaambxdk5fxwk2aviupam74fpup6i7abf3efgx2hrvu45em2orlx3ga
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Route Table created: ocid1.routetable.oc1.eu-zurich-1.aaaaaaaajehdbxit5s4m4eqibkfet6ze7dwp4igeq7y2bpehdfnmgvewa6cq
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Security List created (0.0.0.0/0 all egress, 10.0.0.0/16 6 ingress): ocid1.securitylist.oc1.eu-zurich-1.aaaaaaaarcmy2jyoab4fmjznn2dqmgf3yoc7o54olxwwswjhc4cjp67n3dwq
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Subnet created (10.0.0.0/24, private): ocid1.subnet.oc1.eu-zurich-1.aaaaaaaa73eiheet6hjjoxibmq77jofqow5a3cujbxcaishx2t37hxt6nu6q
+  [INFO] === Step 3: ensure FSS mount target ===
+Action completed. Waiting until the resource has entered state: ('ACTIVE', 'FAILED')
+  [DONE] FSS mount target created: itfss1-50522-fss-mt
+  [INFO] === Step 4: ensure FSS file system ===
+Action completed. Waiting until the resource has entered state: ('ACTIVE', 'FAILED')
+  [DONE] FSS file system created: itfss1-50522-fss-fs
+  [INFO] === Step 5: ensure FSS export ===
+Action completed. Waiting until the resource has entered state: ('ACTIVE',)
+  [DONE] FSS export created: /itfss1-50522-fss
+  [INFO] === Step 6: validate NFS reachability via Network Path Analyzer (TCP/2049) ===
+  [FAIL] Mount target private IP missing; cannot run NPA validation
+  FAIL: IT-1: cycle-fss.sh exited 1 (missing prerequisites or broken script)
+
+Results: 0 passed, 1 failed

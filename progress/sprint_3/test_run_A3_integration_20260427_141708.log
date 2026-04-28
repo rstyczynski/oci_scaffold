@@ -1,0 +1,11 @@
+=== RUN integration:test_fss.sh:test_IT1_full_lifecycle ===
+
+=== IT-1: full lifecycle via cycle-fss.sh ===
+  [INFO] COMPARTMENT_OCID defaulted to tenancy: ocid1.tenancy.oc1..aaaaaaaay2b2tvqcmqmndvcbz5kuptzuo7sp4vufarqfgoru7qojdgywb27a
+  [INFO] OCI_REGION defaulted to home region: eu-zurich-1
+  [INFO] STATE_FILE: /Users/rstyczynski/projects/oci_scaffold/state-itfss1-46208.json
+  [INFO] === Step 1: ensure compartment (optional) ===
+  [FAIL] FSS_COMPARTMENT_OCID is required (or set COMPARTMENT_PATH)
+  FAIL: IT-1: cycle-fss.sh exited 1 (missing prerequisites or broken script)
+
+Results: 0 passed, 1 failed

@@ -36,6 +36,7 @@ cycle-iam_access.sh     # Full cycle: IAM user + group + policy + API-key bucket
 cycle-function.sh       # Full cycle: Fn app + deploy echo function + direct invoke test
 cycle-apigw.sh          # Full cycle: Fn app + function + API GW + Internet test
 cycle-dashboard.sh      # Full cycle: Dashboard group + Dashboard with widgets (logging, audit, metrics)
+cycle-blockvolume.sh    # Full cycle: Compute instance + Block Volume create/attach/fio/teardown
 ```
 
 ## Quick start
@@ -102,6 +103,40 @@ echo "Open dashboard in OCI Console: $(jq -r '"https://cloud.oracle.com/dashboar
 
 NAME_PREFIX=dash ./do/teardown.sh
 
+# Block Volume cycle (compute + volume create/attach/fio/teardown)
+NAME_PREFIX=bv ./cycle-blockvolume.sh
+
+# Block Volume cycle with built-in 60s fio proof run emitted to stdout
+NAME_PREFIX=bv \
+FIO_RUNTIME_SECONDS=60 \
+SKIP_TEARDOWN=true \
+./cycle-blockvolume.sh
+
+# Create a second unattached block volume in its own state
+COMPARTMENT_OCID="$(jq -r '.inputs.oci_compartment' state-bv.json)" \
+NAME_PREFIX=bv-second resource/ensure-blockvolume.sh
+
+# Adopt the second volume by URI and attach it to the original compute
+NAME_PREFIX=bv-second-attach \
+COMPUTE_OCID="$(jq -r '.compute.ocid' state-bv.json)" \
+BV_URI='/oci_scaffold/bv-second-bv' \
+BV_DEVICE_PATH='/dev/oracleoci/oraclevdc' \
+SKIP_FIO=true \
+./cycle-blockvolume.sh
+
+# Teardown: detach adopter state first, then delete the second BV, then the original stack
+NAME_PREFIX=bv-second ./do/teardown.sh
+NAME_PREFIX=bv ./do/teardown.sh
+
+# Block Volume cycle with alternate attachment type
+NAME_PREFIX=bv BV_ATTACH_TYPE=paravirtualized ./cycle-blockvolume.sh
+
+# Block Volume cycle without fio proof run
+NAME_PREFIX=bv SKIP_FIO=true ./cycle-blockvolume.sh
+
+# Keep block volume resources after cycle for inspection
+NAME_PREFIX=bv SKIP_TEARDOWN=true ./cycle-blockvolume.sh
+
 # Customize API GW function/paths/methods (example)
 FN_FUNCTION_SRC_DIR=src/fn/echo \
 APIGW_PATH_PREFIX=/oci_scaffold \
@@ -129,6 +164,93 @@ NAME_PREFIX=apigw ./cycle-apigw.sh
 | API Gateway (ApiGw + Deployment) | yes | `cycle-apigw.sh` |
 | Dashboard Group | yes | `cycle-dashboard.sh` |
 | Dashboard (with logging, audit, metrics widgets) | yes | `cycle-dashboard.sh` |
+| Block Volume | yes | `cycle-blockvolume.sh` |
+
+## Block Volume workflow
+
+`cycle-blockvolume.sh` provisions the smallest useful compose scenario for OCI Block Volume testing:
+- compartment
+- public subnet and compute instance
+- block volume
+- attachment to the compute instance
+- a 60-second fio proof run with JSON emitted to stdout
+- an `iostat` capture saved locally
+- teardown in reverse creation order
+
+### Prerequisites
+
+- OCI CLI configured with Compute, Block Volume, Networking, and IAM permissions
+- SSH key generation available via `ssh-keygen`
+- `jq` installed
+
+### State inputs
+
+The block volume scripts consume these primary inputs:
+
+| Key | Required | Default | Meaning |
+| --- | --- | --- | --- |
+| `.inputs.oci_compartment` | yes | none | target compartment OCID |
+| `.inputs.name_prefix` | yes for name fallback | none | base prefix for derived names |
+| `.compute.ocid` | no | none | target compute instance for attachment; omit to keep the BV unattached |
+| `.inputs.blockvolume_ocid` | no | none | explicit adoption by volume OCID |
+| `.inputs.blockvolume_uri` | no | none | explicit adoption by URI `/compartment/path/volume-name` |
+| `.inputs.blockvolume_name` | no | `{name_prefix}-bv` | explicit volume display name |
+| `.inputs.bv_size_gb` | no | `50` | volume size in GB |
+| `.inputs.bv_vpus_per_gb` | no | OCI default | performance setting |
+| `.inputs.bv_availability_domain` | no | first available AD | explicit AD override used when creating an unattached BV |
+| `.inputs.bv_skip_attach` | no | `false` | force create/adopt without attachment even when `.compute.ocid` is present |
+| `.inputs.bv_attach_type` | no | `iscsi` | attachment type |
+| `.inputs.bv_device_path` | no | `/dev/oracleoci/oraclevdb` | requested device path |
+
+### Run and teardown
+
+```bash
+# full cycle
+NAME_PREFIX=bv ./cycle-blockvolume.sh
+
+# inspect generated state
+jq '.blockvolume' state-bv.json
+
+# inspect fio and iostat artifacts created by the cycle
+jq . state-bv-fio.json
+cat state-bv-iostat.txt
+
+# keep resources for manual validation
+NAME_PREFIX=bv SKIP_TEARDOWN=true ./cycle-blockvolume.sh
+
+# create a second unattached BV in its own state
+COMPARTMENT_OCID="$(jq -r '.inputs.oci_compartment' state-bv.json)" \
+NAME_PREFIX=bv-second resource/ensure-blockvolume.sh
+
+# attach that second BV to the original compute in an adopt state
+NAME_PREFIX=bv-second-attach \
+COMPUTE_OCID="$(jq -r '.compute.ocid' state-bv.json)" \
+BV_URI='/oci_scaffold/bv-second-bv' \
+BV_DEVICE_PATH='/dev/oracleoci/oraclevdc' \
+SKIP_FIO=true \
+./cycle-blockvolume.sh
+
+# teardown later
+NAME_PREFIX=bv-second ./do/teardown.sh
+NAME_PREFIX=bv ./do/teardown.sh
+```
+
+### State outputs
+
+`ensure-blockvolume.sh` records:
+- `.blockvolume.name`
+- `.blockvolume.ocid`
+- `.blockvolume.created`
+- `.blockvolume.deleted`
+- `.blockvolume.attachment_ocid`
+- `.blockvolume.attachment_created`
+- `.blockvolume.attach_type`
+- `.blockvolume.device_path`
+- `.blockvolume.vpus_per_gb`
+- `.blockvolume.fio_runtime_seconds`
+- `.blockvolume.fio_json_report`
+- `.blockvolume.iostat_report`
+- `.blockvolume.iqn`, `.blockvolume.ipv4`, `.blockvolume.port`, `.blockvolume.is_multipath` for iSCSI attachments
 
 ## Failure handling
 

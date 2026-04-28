@@ -1,0 +1,29 @@
+=== RUN integration:test_fss.sh:test_IT1_full_lifecycle ===
+
+=== IT-1: full lifecycle via cycle-fss.sh ===
+  [INFO] COMPARTMENT_OCID defaulted to tenancy: ocid1.tenancy.oc1..aaaaaaaay2b2tvqcmqmndvcbz5kuptzuo7sp4vufarqfgoru7qojdgywb27a
+  [INFO] OCI_REGION defaulted to home region: eu-zurich-1
+  [INFO] STATE_FILE: /Users/rstyczynski/projects/oci_scaffold/state-itfss1-47086.json
+  [INFO] === Step 1: ensure compartment (optional) ===
+  [EXISTING] Compartment '/oci_scaffold': ocid1.compartment.oc1..aaaaaaaaxsyob4rojty3iqy64tkveltkqbmaos2ngb2ncsvvvexs42bxxqha
+  [EXISTING] Compartment '/oci_scaffold/test': ocid1.compartment.oc1..aaaaaaaafmq4oovbsusfafdmowob5cf2zyl43brk2o3epwrjox3yzzphwstq
+  [INFO] === Step 2: ensure network stack (or adopt subnet) ===
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] VCN created (10.0.0.0/16): ocid1.vcn.oc1.eu-zurich-1.amaaaaaaknhfuyia7xeaz7zggmhyc63ghuvf5xwp3vfaeqnwavwwobg4lqxq
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Service Gateway created: ocid1.servicegateway.oc1.eu-zurich-1.aaaaaaaa4kojhktleksbzmh6yta7unqmeftey3ytnzme4jalk2fdkrostzvq
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Route Table created: ocid1.routetable.oc1.eu-zurich-1.aaaaaaaaa7w2nmzbjd5own574ate2k3h2douw6mklxztc4idsrsl4pu5vytq
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Security List created (0.0.0.0/0 all egress, 10.0.0.0/16 6 ingress): ocid1.securitylist.oc1.eu-zurich-1.aaaaaaaatpji4i5macrkx6nby6oco3wteihfkbve4iog4x6wav3m64boqfqa
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Subnet created (10.0.0.0/24, private): ocid1.subnet.oc1.eu-zurich-1.aaaaaaaahliinvdbu3ovlwyropwtnrujkzb3bk7a5soeifgf5am7vohhpuga
+  [INFO] === Step 3: ensure FSS mount target ===
+Usage: oci fs mount-target create [OPTIONS]
+
+Error: Missing option(s) --availability-domain.
+  [FAIL] cycle-fss.sh failed (exit 1) at line 72: ensure-fss_mount_target.sh
+  [FAIL] State file: /Users/rstyczynski/projects/oci_scaffold/state-itfss1-47086.json
+  FAIL: IT-1: cycle-fss.sh exited 1 (missing prerequisites or broken script)
+
+Results: 0 passed, 1 failed

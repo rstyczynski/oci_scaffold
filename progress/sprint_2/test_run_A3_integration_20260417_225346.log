@@ -1,0 +1,10 @@
+=== RUN integration:test_blockvolume.sh:test_IT1_full_lifecycle ===
+
+=== IT-1: full lifecycle via cycle-blockvolume.sh ===
+  PASS: IT-1: lifecycle completed and archived state marks deleted volume
+  FAIL: IT-1: fio JSON missing from stdout or artifact file
+  PASS: IT-1: iostat report saved with device activity output
+
+Results: 2 passed, 1 failed
+
+Results: 0 passed, 1 failed

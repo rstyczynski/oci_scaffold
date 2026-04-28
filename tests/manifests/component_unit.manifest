@@ -1,0 +1,5 @@
+# tests/manifests/component_unit.manifest
+# Unit regression suite (all unit tests)
+unit:test_runner.sh
+unit:test_blockvolume.sh
+

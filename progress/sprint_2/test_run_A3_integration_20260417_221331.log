@@ -1,0 +1,60 @@
+=== RUN integration:test_blockvolume.sh:test_IT1_full_lifecycle ===
+
+=== IT-1: full lifecycle via cycle-blockvolume.sh ===
+  [INFO] COMPARTMENT_OCID defaulted to tenancy: ocid1.tenancy.oc1..aaaaaaaay2b2tvqcmqmndvcbz5kuptzuo7sp4vufarqfgoru7qojdgywb27a
+  [INFO] OCI_REGION defaulted to home region: eu-zurich-1
+  [INFO] STATE_FILE: /Users/rstyczynski/projects/oci_scaffold/state-itbv1-13794.json
+  [INFO] === Step 1: ensure compartment /oci_scaffold ===
+  [EXISTING] Compartment '/oci_scaffold': ocid1.compartment.oc1..aaaaaaaaxsyob4rojty3iqy64tkveltkqbmaos2ngb2ncsvvvexs42bxxqha
+  [INFO] Compartment ready: /oci_scaffold -> ocid1.compartment.oc1..aaaaaaaaxsyob4rojty3iqy64tkveltkqbmaos2ngb2ncsvvvexs42bxxqha
+  [INFO] === Step 2: create compute stack ===
+  [INFO] SSH key generated: /Users/rstyczynski/projects/oci_scaffold/state-itbv1-13794-key
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] VCN created (10.0.0.0/16): ocid1.vcn.oc1.eu-zurich-1.amaaaaaaknhfuyias5mvqgleo6zxzc44gfohbhv37m47u5qnoisntxc25q4q
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Security List created (0.0.0.0/0 all egress, 0.0.0.0/0 6 ingress): ocid1.securitylist.oc1.eu-zurich-1.aaaaaaaayee2xcihynjp2wkaxgzmomazdu47phsbupy7mu7x2rd6rocydosq
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Internet Gateway created: ocid1.internetgateway.oc1.eu-zurich-1.aaaaaaaasgmm5eynrcfjabujgklmmu6lejfixpkay6w2lmlwosztzmyox5bq
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Route Table created: ocid1.routetable.oc1.eu-zurich-1.aaaaaaaandhfv6ho5hqbsdo2s6h3ov6qbhrd4e6iexesqyp4cqs3vukxwjpa
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Subnet created (10.0.0.0/24, public): ocid1.subnet.oc1.eu-zurich-1.aaaaaaaa4wwmhcxkusstao7flzoezwqzwzk5eu6vyhxyvjg6hqadqwdtheia
+[2K  [WAIT] Compute instance provisioning … 0s (state: PROVISIONING)[2K  [WAIT] Compute instance provisioning … 5s (state: PROVISIONING)[2K  [WAIT] Compute instance provisioning … 10s (state: PROVISIONING)[2K  [WAIT] Compute instance provisioning … 15s (state: PROVISIONING)[2K  [WAIT] Compute instance provisioning … 20s (state: PROVISIONING)[2K  [WAIT] Compute instance provisioning … 25s (state: PROVISIONING)[2K  [WAIT] Compute instance provisioning … 30s (state: RUNNING)
+  [DONE] Compute instance created (VM.Standard.E4.Flex, 1 OCPU, 4 GB): ocid1.instance.oc1.eu-zurich-1.an5heljrknhfuyicpeoxngg6apjw6mucztw3xtvgv7qseqcd6saw4mcjym5q
+  [INFO] Compute ready: ocid1.instance.oc1.eu-zurich-1.an5heljrknhfuyicpeoxngg6apjw6mucztw3xtvgv7qseqcd6saw4mcjym5q
+  [INFO] === Step 3: create and attach block volume ===
+/Users/rstyczynski/projects/oci_scaffold/cycle-blockvolume.sh: line 64: /Users/rstyczynski/projects/oci_scaffold/resource/ensure-blockvolume.sh: Permission denied
+  [FAIL] cycle-blockvolume.sh failed (exit 126) at line 64: ensure-blockvolume.sh
+  [FAIL] State file: /Users/rstyczynski/projects/oci_scaffold/state-itbv1-13794.json
+  FAIL: IT-1: cycle-blockvolume.sh exited 126
+=== RUN integration:test_blockvolume.sh:test_IT2_adopt_by_ocid ===
+
+=== IT-2: adopt block volume by OCID ===
+  [INFO] COMPARTMENT_OCID defaulted to tenancy: ocid1.tenancy.oc1..aaaaaaaay2b2tvqcmqmndvcbz5kuptzuo7sp4vufarqfgoru7qojdgywb27a
+  [INFO] OCI_REGION defaulted to home region: eu-zurich-1
+  [INFO] STATE_FILE: /Users/rstyczynski/projects/oci_scaffold/state-itbv2-14877.json
+  [INFO] === Step 1: ensure compartment /oci_scaffold ===
+  [EXISTING] Compartment '/oci_scaffold': ocid1.compartment.oc1..aaaaaaaaxsyob4rojty3iqy64tkveltkqbmaos2ngb2ncsvvvexs42bxxqha
+  [INFO] Compartment ready: /oci_scaffold -> ocid1.compartment.oc1..aaaaaaaaxsyob4rojty3iqy64tkveltkqbmaos2ngb2ncsvvvexs42bxxqha
+  [INFO] === Step 2: create compute stack ===
+  [INFO] SSH key generated: /Users/rstyczynski/projects/oci_scaffold/state-itbv2-14877-key
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] VCN created (10.0.0.0/16): ocid1.vcn.oc1.eu-zurich-1.amaaaaaaknhfuyiaxa4m4bedigb7cqxti23g2cenlwrpkkceqzqgqoehwm5a
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Security List created (0.0.0.0/0 all egress, 0.0.0.0/0 6 ingress): ocid1.securitylist.oc1.eu-zurich-1.aaaaaaaavh6q2xwwcmbl5jiloo4rhdepzjmxuovtiqkylzqerqz6fpqguebq
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Internet Gateway created: ocid1.internetgateway.oc1.eu-zurich-1.aaaaaaaakodods6vnapozkco4blcgwgz7i4ydzk62wxhgaw6ov5ylgvbhgkq
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Route Table created: ocid1.routetable.oc1.eu-zurich-1.aaaaaaaa5muw24el6wxh2hldqeozoiutck4ykpov7xfa5pyi6uoy6fyglnna
+Action completed. Waiting until the resource has entered state: ('AVAILABLE',)
+  [DONE] Subnet created (10.0.0.0/24, public): ocid1.subnet.oc1.eu-zurich-1.aaaaaaaay7ohgjmfbz6w5k4u4gbjw2lhbacqpibkft3yvu2ifem43ka363yq
+[2K  [WAIT] Compute instance provisioning … 0s (state: PROVISIONING)[2K  [WAIT] Compute instance provisioning … 5s (state: PROVISIONING)[2K  [WAIT] Compute instance provisioning … 10s (state: PROVISIONING)[2K  [WAIT] Compute instance provisioning … 15s (state: PROVISIONING)[2K  [WAIT] Compute instance provisioning … 20s (state: PROVISIONING)[2K  [WAIT] Compute instance provisioning … 25s (state: RUNNING)
+  [DONE] Compute instance created (VM.Standard.E4.Flex, 1 OCPU, 4 GB): ocid1.instance.oc1.eu-zurich-1.an5heljrknhfuyicdk4it2pinr7icqtyucucgyi7737jpjd6r7tarj4po2aq
+  [INFO] Compute ready: ocid1.instance.oc1.eu-zurich-1.an5heljrknhfuyicdk4it2pinr7icqtyucucgyi7737jpjd6r7tarj4po2aq
+  [INFO] === Step 3: create and attach block volume ===
+/Users/rstyczynski/projects/oci_scaffold/cycle-blockvolume.sh: line 64: /Users/rstyczynski/projects/oci_scaffold/resource/ensure-blockvolume.sh: Permission denied
+  [FAIL] cycle-blockvolume.sh failed (exit 126) at line 64: ensure-blockvolume.sh
+  [FAIL] State file: /Users/rstyczynski/projects/oci_scaffold/state-itbv2-14877.json
+  FAIL: IT-2: setup cycle failed (exit 126)
+
+Results: 0 passed, 2 failed

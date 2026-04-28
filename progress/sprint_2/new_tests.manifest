@@ -1,0 +1,10 @@
+# Sprint 2 new tests — used by tests/run.sh --new-only
+
+# Unit tests
+unit:test_runner.sh:test_UT1_component_manifest_selection
+unit:test_runner.sh:test_UT2_missing_manifest_fails
+unit:test_blockvolume.sh:test_UT1_ensure_can_create_unattached_volume
+unit:test_blockvolume.sh:test_UT2_unowned_state_is_noop
+
+# Integration tests
+integration:test_blockvolume.sh:test_IT1_full_lifecycle

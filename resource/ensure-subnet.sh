@@ -9,6 +9,7 @@
 #   .sl.ocid                          (required)
 #   .inputs.subnet_cidr               (optional, default: 10.0.0.0/24)
 #   .inputs.subnet_prohibit_public_ip (optional, default: true)
+#   .inputs.subnet_dns_label          (optional; set only at creation; defaults to a sanitized form of name_prefix)
 #
 # Writes to state.json:
 #   .subnet.ocid
@@ -25,6 +26,7 @@ RT_OCID=$(_state_get '.rt.ocid')
 SL_OCID=$(_state_get '.sl.ocid')
 SUBNET_CIDR=$(_state_get '.inputs.subnet_cidr')
 SUBNET_PROHIBIT_PUBLIC_IP=$(_state_get '.inputs.subnet_prohibit_public_ip')
+SUBNET_DNS_LABEL=$(_state_get '.inputs.subnet_dns_label')
 
 SUBNET_CIDR="${SUBNET_CIDR:-10.0.0.0/24}"
 SUBNET_PROHIBIT_PUBLIC_IP="${SUBNET_PROHIBIT_PUBLIC_IP:-true}"
@@ -41,6 +43,21 @@ SUBNET_OCID=$(oci network subnet list \
   --query 'data[0].id' --raw-output 2>/dev/null) || true
 
 if [ -z "$SUBNET_OCID" ] || [ "$SUBNET_OCID" = "null" ]; then
+  _dns_arg=()
+  # Default dns-label from name_prefix when not provided.
+  if [ -z "${SUBNET_DNS_LABEL:-}" ] || [ "$SUBNET_DNS_LABEL" = "null" ]; then
+    # OCI dns-label constraints: 1-15 chars, alphanumeric, starts with a letter.
+    _derived=$(echo "$NAME_PREFIX" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]')
+    # Ensure starts with a letter.
+    if ! echo "$_derived" | grep -Eq '^[a-z]'; then
+      _derived="s${_derived}"
+    fi
+    SUBNET_DNS_LABEL="${_derived:0:15}"
+  fi
+  if [ -n "${SUBNET_DNS_LABEL:-}" ] && [ "$SUBNET_DNS_LABEL" != "null" ]; then
+    _dns_arg=(--dns-label "$SUBNET_DNS_LABEL")
+  fi
+
   SUBNET_OCID=$(oci network subnet create \
     --compartment-id "$COMPARTMENT_OCID" \
     --vcn-id "$VCN_OCID" \
@@ -49,6 +66,7 @@ if [ -z "$SUBNET_OCID" ] || [ "$SUBNET_OCID" = "null" ]; then
     --route-table-id "$RT_OCID" \
     --security-list-ids "[\"$SL_OCID\"]" \
     --prohibit-public-ip-on-vnic "$SUBNET_PROHIBIT_PUBLIC_IP" \
+    "${_dns_arg[@]}" \
     --wait-for-state AVAILABLE \
     --query 'data.id' --raw-output)
   subnet_type=$( [ "$SUBNET_PROHIBIT_PUBLIC_IP" = "false" ] && echo "public" || echo "private" )

@@ -12,6 +12,7 @@
 #   .inputs.path_analyzer_dst_type       IP_ADDRESS | VNIC (default: IP_ADDRESS)
 #   .inputs.path_analyzer_dst_ip         destination IP — overrides hostname when set (optional)
 #   .inputs.path_analyzer_dst_vnic_id    destination VNIC OCID when dst_type=VNIC
+#   .inputs.path_analyzer_dst_subnet_ocid destination subnet OCID when dst_type=SUBNET
 #   .inputs.path_analyzer_source_type    SUBNET | VNIC | COMPUTE_INSTANCE | IP_ADDRESS (default: SUBNET)
 #   .inputs.path_analyzer_source_ip      source IP address (default: first usable subnet IP)
 #   .inputs.path_analyzer_source_vnic_id source VNIC OCID when source_type=VNIC
@@ -60,8 +61,15 @@ _pa_dst_type=$(_state_get '.inputs.path_analyzer_dst_type')
 PATH_DST_TYPE="${_pa_dst_type:-IP_ADDRESS}"
 _pa_dst_vnic_id=$(_state_get '.inputs.path_analyzer_dst_vnic_id')
 PATH_DST_VNIC_ID="${_pa_dst_vnic_id:-}"
+_pa_dst_subnet=$(_state_get '.inputs.path_analyzer_dst_subnet_ocid')
+PATH_DST_SUBNET_OCID="${_pa_dst_subnet:-}"
 _pa_label=$(_state_get '.inputs.path_analyzer_label')
 PATH_LABEL="${_pa_label:-}"
+
+# Auto-select SUBNET destination endpoint when a destination subnet OCID is provided.
+if [ -n "${PATH_DST_SUBNET_OCID:-}" ] && { [ -z "${_pa_dst_type:-}" ] || [ "$PATH_DST_TYPE" = "IP_ADDRESS" ]; }; then
+  PATH_DST_TYPE="SUBNET"
+fi
 
 # Resolve IP: use explicit PATH_DST_IP if given, otherwise resolve hostname
 if [ -z "${PATH_DST_IP:-}" ]; then
@@ -141,6 +149,13 @@ case "$PATH_DST_TYPE" in
       --arg address "$PATH_DST_IP" \
       '{type:"IP_ADDRESS", address:$address}')
     ;;
+  SUBNET)
+    _require_env PATH_DST_SUBNET_OCID PATH_DST_IP
+    destination_endpoint=$(jq -nc \
+      --arg subnet_id "$PATH_DST_SUBNET_OCID" \
+      --arg address "$PATH_DST_IP" \
+      '{type:"SUBNET", subnetId:$subnet_id, address:$address}')
+    ;;
   VNIC)
     _require_env PATH_DST_VNIC_ID PATH_DST_IP
     destination_endpoint=$(jq -nc \
@@ -149,7 +164,7 @@ case "$PATH_DST_TYPE" in
       '{type:"VNIC", vnicId:$vnic_id, address:$address}')
     ;;
   *)
-    echo "  [ERROR] path_analyzer_dst_type must be IP_ADDRESS or VNIC (got: $PATH_DST_TYPE)" >&2
+    echo "  [ERROR] path_analyzer_dst_type must be IP_ADDRESS, SUBNET, or VNIC (got: $PATH_DST_TYPE)" >&2
     exit 1
     ;;
 esac

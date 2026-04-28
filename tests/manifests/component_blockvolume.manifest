@@ -1,0 +1,4 @@
+# tests/manifests/component_blockvolume.manifest
+unit:test_runner.sh
+unit:test_blockvolume.sh
+integration:test_blockvolume.sh

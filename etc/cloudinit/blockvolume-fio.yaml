@@ -1,0 +1,10 @@
+#cloud-config
+package_update: false
+packages:
+  - fio
+  - sysstat
+  - iscsi-initiator-utils
+
+runcmd:
+  - mkdir -p /mnt/bv
+  - systemctl enable --now iscsid || true

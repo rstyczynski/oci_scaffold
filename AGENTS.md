@@ -120,6 +120,12 @@ Before starting any work, you MUST read and understand all rules in `rules/gener
 
 **IMPORTANT**: You MUST comply with all rules without exceptions. If anything is unclear or conflicts, ask immediately. 
 
+## Local RUP patches (MUST READ)
+
+This repository includes local clarifications to the upstream RUP rules:
+
+- `RUP_patch.md`
+
 ## Summary
 
 As an agent:

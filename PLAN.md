@@ -17,3 +17,27 @@ Backlog Items:
 
 * OCI-1. Add ensure/teardown scripts and cycle example for OCI Dashboard service
 * OCI-2. Exemplary dashboard with logging, audit, and metrics widgets
+
+## Sprint 2 - Block Volume integration (OCI-3, OCI-4, OCI-5)
+
+Status: Done
+Mode: managed
+Test: integration
+Regression: unit
+
+Backlog Items:
+
+* OCI-3. Block Volume resource — review, integrate, document
+* OCI-4. Simple fio proof run for block volume cycle
+* OCI-5. URI-style adoption for block volume cycle
+
+## Sprint 3 - OCI File Storage Service (FSS) scaffold (OCI-6)
+
+Status: Progress
+Mode: managed
+Test: integration
+Regression: unit
+
+Backlog Items:
+
+* OCI-6. Add ensure/teardown scripts and cycle example for OCI File Storage Service (FSS)

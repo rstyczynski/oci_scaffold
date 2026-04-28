@@ -1,0 +1,17 @@
+=== RUN unit:test_runner.sh ===
+
+=== UT-1: component manifest selection ===
+  PASS: UT-1: component manifest resolved to fixture script
+
+=== UT-2: missing manifest fails clearly ===
+  PASS: UT-2: missing manifest returned clear error
+
+Results: 2 passed, 0 failed
+=== RUN unit:test_blockvolume.sh ===
+
+=== UT-2: teardown no-op on unowned state ===
+  PASS: UT-2: unowned teardown exited cleanly without OCI mutations
+
+Results: 1 passed, 0 failed
+
+Results: 2 passed, 0 failed

@@ -1,0 +1,4 @@
+# tests/manifests/component_fss.manifest
+# OCI File Storage Service (FSS) scaffold component tests
+integration:test_fss.sh
+
