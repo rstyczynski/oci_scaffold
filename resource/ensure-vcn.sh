@@ -49,7 +49,7 @@ if [ -z "$VCN_OCID" ] || [ "$VCN_OCID" = "null" ]; then
       # Keep it short to be safe.
       VCN_DNS_LABEL="${_derived:0:15}"
     fi
-    _dns_args=(--is-dns-label-enabled true --dns-label "$VCN_DNS_LABEL")
+    _dns_args=(--dns-label "$VCN_DNS_LABEL")
   fi
 
   VCN_OCID=$(oci network vcn create \
